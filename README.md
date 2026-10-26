@@ -189,8 +189,8 @@ Proyek ini telah dikonfigurasi dan diverifikasi siap dideploy langsung ke [Verce
    - Kunjungi [vercel.com/new](https://vercel.com/new).
    - Pilih repository GitHub `e-reservasi-walikota`.
    - Pada bagian **Environment Variables**, tambahkan:
-     - `NEXT_PUBLIC_SUPABASE_URL` = `https://tqmqnyhkjwhhptuewbei.supabase.co`
-     - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`
+     - `NEXT_PUBLIC_SUPABASE_URL` = `https://your-project-id.supabase.co`
+     - `NEXT_PUBLIC_SUPABASE_ANON_KEY` = `your-anon-public-key-here`
    - Klik **Deploy**. Aplikasi akan otomatis aktif dan siap digunakan dalam ~1 menit!
 
 ### Opsi B: Deploy Cepat via Terminal (Vercel CLI)
