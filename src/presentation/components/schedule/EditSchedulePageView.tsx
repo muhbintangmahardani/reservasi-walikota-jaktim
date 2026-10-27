@@ -29,7 +29,6 @@ import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '../ui
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Badge } from '../ui/badge';
-import { Breadcrumb } from '../ui/breadcrumb';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -245,26 +244,20 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
 
   return (
     <div className="w-full space-y-6 pb-12">
-      {/* 1. BREADCRUMB NAVIGATION */}
+      {/* Top back button */}
       <div className="flex items-center justify-between gap-3">
-        <Breadcrumb
-          items={[
-            { label: 'Kelola Jadwal', href: '/kelola-jadwal' },
-            { label: 'Edit Jadwal Kegiatan', isCurrent: true },
-          ]}
-        />
         <Button
-          variant="ghost"
+          variant="outline"
           size="sm"
           onClick={() => router.back()}
           className="text-xs text-muted-foreground hover:text-foreground h-8"
         >
-          <ArrowLeft className="w-3.5 h-3.5 mr-1" />
+          <ArrowLeft className="w-3.5 h-3.5 mr-1.5" />
           Kembali
         </Button>
       </div>
 
-      {/* 2. MAIN CARD */}
+      {/* MAIN CARD */}
       <Card className="border-border shadow-xs">
         <CardHeader className="pb-4 border-b border-border/70">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">

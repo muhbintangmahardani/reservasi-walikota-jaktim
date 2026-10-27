@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   CalendarClock,
@@ -42,7 +42,6 @@ import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog } from '../ui/dialog';
-import { Breadcrumb } from '../ui/breadcrumb';
 import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
@@ -62,6 +61,15 @@ export const KelolaJadwalView: React.FC = () => {
   const [roomFilter, setRoomFilter] = useState<string>('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'today' | 'upcoming' | 'week' | 'month'>('all');
   const [selectedAgenda, setSelectedAgenda] = useState<Reservation | null>(null);
+
+  // Pagination State
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  // Reset pagination on filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter, roomFilter, timeFilter]);
 
   // Metrics
   const metrics = useMemo(() => {
@@ -126,6 +134,13 @@ export const KelolaJadwalView: React.FC = () => {
       });
   }, [reservations, statusFilter, roomFilter, timeFilter, searchQuery]);
 
+  // Total pages and paginated slice
+  const totalPages = Math.ceil(filteredReservations.length / ITEMS_PER_PAGE) || 1;
+  const paginatedReservations = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredReservations.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredReservations, currentPage]);
+
   // Guard for unauthorized roles
   if (!canManage) {
     return (
@@ -173,48 +188,34 @@ export const KelolaJadwalView: React.FC = () => {
 
   return (
     <div className="w-full space-y-6 pb-12">
-      {/* 1. HEADER & BREADCRUMBS */}
-      <div className="space-y-2">
-        <Breadcrumb
-          items={[
-            { label: 'Kelola Jadwal', isCurrent: true },
-          ]}
-        />
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border/70">
-          <div>
-            <div className="flex items-center gap-2.5">
-              <div className="p-2 rounded-lg bg-primary/10 border border-primary/20 text-primary">
-                <CalendarClock className="w-5 h-5" />
-              </div>
-              <div>
-                <h1 className="text-xl font-bold tracking-tight text-foreground">
-                  Kelola Jadwal Kegiatan
-                </h1>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Pusat kendali dan penyesuaian seluruh agenda rapat pimpinan dan kegiatan ruang rapat.
-                </p>
-              </div>
-            </div>
-          </div>
+      {/* 1. HEADER (Shadcn Clean Minimalist) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-3 border-b border-border/70">
+        <div>
+          <h1 className="text-xl font-bold tracking-tight text-foreground">
+            Kelola Jadwal Kegiatan
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pusat kendali dan penyesuaian seluruh agenda rapat pimpinan dan kegiatan ruang rapat.
+          </p>
+        </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => router.push('/jadwal-pimpinan')}
-              className="text-xs h-8"
-            >
-              Portal Jadwal Pimpinan
-            </Button>
-            <Button
-              size="sm"
-              onClick={() => router.push('/reservasi/baru')}
-              className="text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90"
-            >
-              <Plus className="w-3.5 h-3.5 mr-1.5" />
-              Buat Reservasi Baru
-            </Button>
-          </div>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => router.push('/jadwal-pimpinan')}
+            className="text-xs h-8"
+          >
+            Portal Jadwal Pimpinan
+          </Button>
+          <Button
+            size="sm"
+            onClick={() => router.push('/reservasi/baru')}
+            className="text-xs h-8 bg-primary text-primary-foreground hover:bg-primary/90"
+          >
+            <Plus className="w-3.5 h-3.5 mr-1.5" />
+            Buat Reservasi Baru
+          </Button>
         </div>
       </div>
 
@@ -401,24 +402,26 @@ export const KelolaJadwalView: React.FC = () => {
               <Table>
                 <TableHeader>
                   <TableRow className="border-b border-border bg-muted/30">
-                    <TableHead className="w-12 text-center text-xs">No</TableHead>
-                    <TableHead className="text-xs font-semibold">Nama Acara & Kategori</TableHead>
-                    <TableHead className="text-xs font-semibold">Hari & Waktu</TableHead>
-                    <TableHead className="text-xs font-semibold">Ruangan</TableHead>
-                    <TableHead className="text-xs font-semibold">Pejabat Pelaksana</TableHead>
-                    <TableHead className="text-xs font-semibold">Asal OPD</TableHead>
-                    <TableHead className="text-xs font-semibold">Status</TableHead>
-                    <TableHead className="text-xs font-semibold text-right pr-4">Aksi</TableHead>
+                    <TableHead className="w-12 text-center text-xs font-semibold">No</TableHead>
+                    <TableHead className="min-w-[280px] text-xs font-semibold">Nama Acara & Kategori</TableHead>
+                    <TableHead className="min-w-[150px] text-xs font-semibold whitespace-nowrap">Hari & Waktu</TableHead>
+                    <TableHead className="min-w-[160px] text-xs font-semibold">Ruangan</TableHead>
+                    <TableHead className="min-w-[160px] text-xs font-semibold">Pejabat Pelaksana</TableHead>
+                    <TableHead className="min-w-[140px] text-xs font-semibold">Asal OPD</TableHead>
+                    <TableHead className="w-28 text-center text-xs font-semibold whitespace-nowrap">Status</TableHead>
+                    <TableHead className="w-32 text-right pr-4 text-xs font-semibold whitespace-nowrap">Aksi</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {filteredReservations.map((item, index) => (
+                  {paginatedReservations.map((item, index) => (
                     <TableRow key={item.id} className="hover:bg-muted/40 transition-colors">
                       <TableCell className="text-center font-medium text-xs text-muted-foreground">
-                        {index + 1}
+                        {(currentPage - 1) * ITEMS_PER_PAGE + index + 1}
                       </TableCell>
-                      <TableCell className="text-xs">
-                        <div className="font-semibold text-foreground leading-snug">{item.eventName}</div>
+                      <TableCell className="text-xs min-w-[280px]">
+                        <div className="font-semibold text-foreground leading-normal" title={item.eventName}>
+                          {item.eventName}
+                        </div>
                         {item.categoryName && (
                           <div className="mt-1">
                             <span className="inline-block px-1.5 py-0.5 rounded text-[10px] font-medium bg-muted text-muted-foreground border border-border/60">
@@ -439,23 +442,23 @@ export const KelolaJadwalView: React.FC = () => {
                       <TableCell className="text-xs">
                         <div className="font-medium text-foreground flex items-center gap-1">
                           <MapPin className="w-3 h-3 text-muted-foreground shrink-0" />
-                          <span className="truncate max-w-[140px]">{item.roomName}</span>
+                          <span className="truncate max-w-[160px]">{item.roomName}</span>
                         </div>
                       </TableCell>
                       <TableCell className="text-xs">
-                        <div className="font-semibold text-foreground truncate max-w-[150px]">
+                        <div className="font-semibold text-foreground truncate max-w-[160px]">
                           {item.executorOfficial || '-'}
                         </div>
                         {item.accompanyingOfficial && (
-                          <div className="text-[10px] text-muted-foreground truncate max-w-[150px]">
+                          <div className="text-[10px] text-muted-foreground truncate max-w-[160px]">
                             Pendamping: {item.accompanyingOfficial}
                           </div>
                         )}
                       </TableCell>
                       <TableCell className="text-xs">
-                        <div className="text-foreground truncate max-w-[120px]">{item.letterOrigin || '-'}</div>
+                        <div className="text-foreground truncate max-w-[140px]">{item.letterOrigin || '-'}</div>
                       </TableCell>
-                      <TableCell className="text-xs whitespace-nowrap">
+                      <TableCell className="text-xs text-center whitespace-nowrap">
                         {getStatusBadge(item.status)}
                       </TableCell>
                       <TableCell className="text-xs text-right pr-4 whitespace-nowrap">
@@ -488,6 +491,73 @@ export const KelolaJadwalView: React.FC = () => {
                   ))}
                 </TableBody>
               </Table>
+            </div>
+          )}
+
+          {/* 5. PAGINATION TOOLBAR */}
+          {filteredReservations.length > 0 && (
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-border/70 text-xs text-muted-foreground bg-card">
+              <div>
+                Menampilkan{' '}
+                <span className="font-semibold text-foreground">
+                  {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+                </span>{' '}
+                -{' '}
+                <span className="font-semibold text-foreground">
+                  {Math.min(currentPage * ITEMS_PER_PAGE, filteredReservations.length)}
+                </span>{' '}
+                dari{' '}
+                <span className="font-semibold text-foreground">{filteredReservations.length}</span>{' '}
+                agenda kegiatan
+              </div>
+
+              {totalPages > 1 && (
+                <div className="flex items-center gap-1.5">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="h-7 px-2.5 text-xs"
+                  >
+                    Sebelumnya
+                  </Button>
+                  <div className="flex items-center gap-1 px-1">
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .map((p, idx, arr) => {
+                        const prev = arr[idx - 1];
+                        return (
+                          <React.Fragment key={p}>
+                            {prev && p - prev > 1 && (
+                              <span className="px-1 text-muted-foreground">...</span>
+                            )}
+                            <Button
+                              variant={currentPage === p ? 'default' : 'outline'}
+                              size="sm"
+                              onClick={() => setCurrentPage(p)}
+                              className={cn(
+                                'h-7 w-7 p-0 text-xs font-medium',
+                                currentPage === p && 'pointer-events-none'
+                              )}
+                            >
+                              {p}
+                            </Button>
+                          </React.Fragment>
+                        );
+                      })}
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                    className="h-7 px-2.5 text-xs"
+                  >
+                    Berikutnya
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </CardContent>

@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 import {
   FileSpreadsheet,
   FileText,
@@ -24,6 +24,7 @@ import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
 import { useToast } from '../../context/ToastContext';
+import { cn } from '@/lib/utils';
 
 export const ReportDashboard: React.FC = () => {
   const { reservations, rooms } = useReservations();
@@ -32,11 +33,25 @@ export const ReportDashboard: React.FC = () => {
   const [selectedRoomFilter, setSelectedRoomFilter] = useState('all');
   const [selectedStatusFilter, setSelectedStatusFilter] = useState('all');
 
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [selectedRoomFilter, selectedStatusFilter]);
+
   const filteredData = reservations.filter((r) => {
     if (selectedRoomFilter !== 'all' && r.roomId !== selectedRoomFilter) return false;
     if (selectedStatusFilter !== 'all' && r.status !== selectedStatusFilter) return false;
     return true;
   });
+
+  const totalPages = Math.ceil(filteredData.length / ITEMS_PER_PAGE) || 1;
+  const paginatedData = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredData.slice(start, start + ITEMS_PER_PAGE);
+  }, [filteredData, currentPage]);
 
   const handleExportExcel = () => {
     const excelData = filteredData.map((item, idx) => ({
@@ -191,10 +206,10 @@ export const ReportDashboard: React.FC = () => {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredData.map((item, idx) => (
+                paginatedData.map((item, idx) => (
                   <TableRow key={item.id} className="hover:bg-muted/30 transition-colors">
                     <TableCell className="font-mono text-muted-foreground text-center font-semibold text-xs">
-                      {idx + 1}
+                      {(currentPage - 1) * ITEMS_PER_PAGE + idx + 1}
                     </TableCell>
                     <TableCell>
                       <div className="min-w-[300px] font-semibold text-foreground leading-normal">
@@ -253,6 +268,73 @@ export const ReportDashboard: React.FC = () => {
             </TableBody>
           </Table>
         </div>
+
+        {/* Pagination Toolbar */}
+        {filteredData.length > 0 && (
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-4 py-3 border-t border-border text-xs text-muted-foreground bg-card">
+            <div>
+              Menampilkan{' '}
+              <span className="font-semibold text-foreground">
+                {(currentPage - 1) * ITEMS_PER_PAGE + 1}
+              </span>{' '}
+              -{' '}
+              <span className="font-semibold text-foreground">
+                {Math.min(currentPage * ITEMS_PER_PAGE, filteredData.length)}
+              </span>{' '}
+              dari{' '}
+              <span className="font-semibold text-foreground">{filteredData.length}</span>{' '}
+              total agenda
+            </div>
+
+            {totalPages > 1 && (
+              <div className="flex items-center gap-1.5">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  disabled={currentPage === 1}
+                  className="h-7 px-2.5 text-xs"
+                >
+                  Sebelumnya
+                </Button>
+                <div className="flex items-center gap-1 px-1">
+                  {Array.from({ length: totalPages }, (_, i) => i + 1)
+                    .filter((p) => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                    .map((p, idx, arr) => {
+                      const prev = arr[idx - 1];
+                      return (
+                        <React.Fragment key={p}>
+                          {prev && p - prev > 1 && (
+                            <span className="px-1 text-muted-foreground">...</span>
+                          )}
+                          <Button
+                            variant={currentPage === p ? 'default' : 'outline'}
+                            size="sm"
+                            onClick={() => setCurrentPage(p)}
+                            className={cn(
+                              'h-7 w-7 p-0 text-xs font-medium',
+                              currentPage === p && 'pointer-events-none'
+                            )}
+                          >
+                            {p}
+                          </Button>
+                        </React.Fragment>
+                      );
+                    })}
+                </div>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  disabled={currentPage === totalPages}
+                  className="h-7 px-2.5 text-xs"
+                >
+                  Berikutnya
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
       </Card>
     </div>
   );
