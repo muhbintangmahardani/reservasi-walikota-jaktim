@@ -187,13 +187,12 @@ function LoginFormContent() {
         return;
       }
 
-      // 2. Validasi Kata Sandi
+      // 2. Validasi Kata Sandi: Hanya izinkan kata sandi aktif yang saat ini berlaku
       const targetEmail = dbMatch ? dbMatch.email : officialMatch!.email;
-      const expectedPassword = getUserPassword(targetEmail);
-      const officialPassword = officialMatch?.password || 'walikota2026';
+      const activePassword = getUserPassword(targetEmail);
 
-      const isPasswordCorrect =
-        inputPass === expectedPassword || inputPass === officialPassword;
+      // Setelah sandi diganti oleh admin atau pengguna, kata sandi default lama diblokir permanen!
+      const isPasswordCorrect = inputPass === activePassword;
 
       if (!isPasswordCorrect) {
         setErrorMessage('Kata sandi yang Anda masukkan salah. Silakan periksa kembali.');

@@ -57,6 +57,7 @@ export const UserManagement: React.FC = () => {
   const [userType, setUserType] = useState<UserType>('internal');
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [initialPassword, setInitialPassword] = useState('');
 
   // Password reset dialog state
   const [isResetModalOpen, setIsResetModalOpen] = useState(false);
@@ -90,6 +91,7 @@ export const UserManagement: React.FC = () => {
     setUserType('internal');
     setEmail('');
     setPhoneNumber('');
+    setInitialPassword('');
     setIsModalOpen(true);
   };
 
@@ -130,11 +132,12 @@ export const UserManagement: React.FC = () => {
         phoneNumber,
         isActive: true,
       });
-      // Set initial default password
-      setUserPassword(email, 'walikota2026');
+      // Set custom or default password (sandi default diblokir jika admin memasukkan sandi kustom)
+      const finalPass = initialPassword.trim() || 'walikota2026';
+      setUserPassword(email, finalPass);
       toast({
         title: 'Pengguna Berhasil Ditambahkan',
-        description: `Akun baru ${fullName} telah didaftarkan dengan sandi default "walikota2026".`,
+        description: `Akun baru ${fullName} telah didaftarkan dengan kata sandi: "${finalPass}".`,
         variant: 'success',
       });
     }
@@ -482,6 +485,22 @@ export const UserManagement: React.FC = () => {
               onChange={(e) => setPhoneNumber(e.target.value)}
             />
           </div>
+
+          {!editingUser && (
+            <div className="space-y-1">
+              <label className="text-muted-foreground font-medium">Kata Sandi Akun</label>
+              <Input
+                type="text"
+                placeholder="Kosongkan untuk bawaan: walikota2026"
+                value={initialPassword}
+                onChange={(e) => setInitialPassword(e.target.value)}
+                className="font-mono text-xs"
+              />
+              <p className="text-[10px] text-muted-foreground">
+                Jika diisi sandi kustom, pengguna hanya bisa masuk dengan sandi ini (sandi default otomatis tidak berlaku).
+              </p>
+            </div>
+          )}
 
           <div className="pt-3 border-t border-border/60 flex justify-end gap-2">
             <Button type="button" variant="outline" size="sm" onClick={() => setIsModalOpen(false)}>
