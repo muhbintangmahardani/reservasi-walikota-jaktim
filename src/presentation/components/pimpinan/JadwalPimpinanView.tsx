@@ -210,7 +210,7 @@ export const JadwalPimpinanView: React.FC = () => {
   }, [leadershipAgendas]);
 
   return (
-    <div className="space-y-4 max-w-6xl mx-auto">
+    <div className="space-y-6 w-full">
       {/* SHADCN MINIMALIST HEADER */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-border/70">
         <div>

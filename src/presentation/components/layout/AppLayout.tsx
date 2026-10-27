@@ -28,6 +28,7 @@ import {
   Sparkles,
   LogOut,
   Crown,
+  CalendarClock,
 } from 'lucide-react';
 import { useAuth } from '../../context/AuthContext';
 import { useReservations } from '../../context/ReservationContext';
@@ -119,6 +120,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     if (path === '/jadwal-pimpinan') return 'Jadwal Pimpinan';
     if (path === '/reservasi/baru') return 'Formulir Reservasi Baru';
     if (path === '/reservasi/riwayat') return 'Riwayat Pengajuan';
+    if (path === '/kelola-jadwal') return 'Kelola Jadwal Kegiatan';
     if (path.startsWith('/reservasi/edit')) return 'Kelola & Edit Jadwal';
     if (path === '/verifikasi') return 'Meja Verifikasi Sekpim';
     if (path === '/verifikasi/jadwal-pimpinan') return 'Jadwal Pimpinan';
@@ -184,9 +186,12 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
 
   // Breadcrumbs generator: terstruktur rapi untuk sub-halaman
   const getBreadcrumbs = (): BreadcrumbItem[] => {
+    if (pathname === '/kelola-jadwal') {
+      return [{ label: 'Kelola Jadwal', isCurrent: true }];
+    }
     if (pathname.startsWith('/reservasi/edit')) {
       return [
-        { label: 'Jadwal Pimpinan', href: '/jadwal-pimpinan' },
+        { label: 'Kelola Jadwal', href: '/kelola-jadwal' },
         { label: 'Kelola & Edit Jadwal', isCurrent: true },
       ];
     }
@@ -233,6 +238,11 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
                 label: 'Meja Verifikasi',
                 icon: CheckCircle2,
                 badge: pendingCount > 0 ? pendingCount : undefined,
+              },
+              {
+                href: '/kelola-jadwal',
+                label: 'Kelola Jadwal',
+                icon: CalendarClock,
               },
             ],
           },

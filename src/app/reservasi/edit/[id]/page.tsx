@@ -13,3 +13,4 @@ export default async function EditSchedulePage({ params }: PageProps) {
   const { id } = await params;
   return <EditSchedulePageView id={id} />;
 }
+

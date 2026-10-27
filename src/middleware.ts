@@ -53,7 +53,7 @@ export function middleware(request: NextRequest) {
     }
 
     // Kelola / Edit Jadwal: Khusus Verifikator Pimpinan, Verifikator Asisten, dan Admin
-    if (pathname.startsWith('/reservasi/edit')) {
+    if (pathname.startsWith('/reservasi/edit') || pathname.startsWith('/kelola-jadwal')) {
       const allowedRoles = ['verifikator_asisten', 'verifikator_pimpinan', 'admin'];
       if (!allowedRoles.includes(authUser.role)) {
         const redirectUrl = new URL('/dashboard', request.url);

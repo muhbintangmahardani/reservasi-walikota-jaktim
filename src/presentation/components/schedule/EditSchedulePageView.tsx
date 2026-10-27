@@ -189,7 +189,7 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
   // Guard: Unauthorized
   if (!canEdit) {
     return (
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="w-full py-8">
         <Card className="border-border">
           <CardContent className="p-8 text-center space-y-4">
             <AlertTriangle className="w-12 h-12 text-amber-500 mx-auto" />
@@ -197,8 +197,8 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
               Halaman kelola jadwal hanya dapat diakses oleh role Pimpinan, Asisten, atau Administrator.
             </p>
-            <Button variant="outline" size="sm" onClick={() => router.push('/jadwal-pimpinan')}>
-              Kembali ke Jadwal Pimpinan
+            <Button variant="outline" size="sm" onClick={() => router.push('/kelola-jadwal')}>
+              Kembali ke Kelola Jadwal
             </Button>
           </CardContent>
         </Card>
@@ -209,7 +209,7 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
   // Loading state
   if (isLoading && !reservation) {
     return (
-      <div className="max-w-4xl mx-auto space-y-4">
+      <div className="w-full space-y-6">
         <Skeleton className="h-6 w-64" />
         <Card className="border-border">
           <CardContent className="p-6 space-y-4">
@@ -226,7 +226,7 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
   // Not found state
   if (!reservation && !isLoading) {
     return (
-      <div className="max-w-4xl mx-auto py-8">
+      <div className="w-full py-8">
         <Card className="border-border">
           <CardContent className="p-8 text-center space-y-4">
             <FileText className="w-12 h-12 text-muted-foreground mx-auto" />
@@ -234,8 +234,8 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
             <p className="text-xs text-muted-foreground max-w-md mx-auto">
               Data reservasi atau agenda rapat dengan ID tersebut tidak ditemukan dalam sistem.
             </p>
-            <Button variant="outline" size="sm" onClick={() => router.push('/jadwal-pimpinan')}>
-              Kembali ke Jadwal Pimpinan
+            <Button variant="outline" size="sm" onClick={() => router.push('/kelola-jadwal')}>
+              Kembali ke Kelola Jadwal
             </Button>
           </CardContent>
         </Card>
@@ -244,13 +244,13 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
   }
 
   return (
-    <div className="max-w-4xl mx-auto space-y-4 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* 1. BREADCRUMB NAVIGATION */}
       <div className="flex items-center justify-between gap-3">
         <Breadcrumb
           items={[
-            { label: 'Jadwal Pimpinan', href: '/jadwal-pimpinan' },
-            { label: 'Kelola & Edit Jadwal', isCurrent: true },
+            { label: 'Kelola Jadwal', href: '/kelola-jadwal' },
+            { label: 'Edit Jadwal Kegiatan', isCurrent: true },
           ]}
         />
         <Button
@@ -536,3 +536,4 @@ export const EditSchedulePageView: React.FC<EditSchedulePageViewProps> = ({ id }
     </div>
   );
 };
+

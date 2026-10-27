@@ -18,6 +18,7 @@ import {
   History,
   LayoutDashboard,
   Crown,
+  CalendarClock,
 } from 'lucide-react';
 import { useReservations } from '../../context/ReservationContext';
 import { Badge } from '../ui/badge';
@@ -93,6 +94,7 @@ export const GlobalSearchDialog: React.FC<GlobalSearchDialogProps> = ({ isOpen, 
     { label: 'Form Pengajuan Reservasi Baru', href: '/reservasi/baru', icon: CalendarPlus, category: 'Menu' },
     { label: 'Riwayat Pengajuan Reservasi', href: '/reservasi/riwayat', icon: History, category: 'Menu' },
     { label: 'Meja Verifikasi Sekpim (Asisten & Pimpinan)', href: '/verifikasi', icon: CheckCircle2, category: 'Sekpim' },
+    { label: 'Kelola Jadwal & Penyesuaian Agenda', href: '/kelola-jadwal', icon: CalendarClock, category: 'Sekpim' },
     { label: 'Data & Manajemen Ruangan', href: '/ruangan', icon: Building2, category: 'Fasilitas' },
     { label: 'Laporan Rekapitulasi & Ekspor Data', href: '/laporan', icon: FileSpreadsheet, category: 'Laporan' },
     { label: 'Manajemen Pengguna (Admin Kominfotik)', href: '/pengaturan/users', icon: Users, category: 'Admin' },
