@@ -41,8 +41,10 @@ import {
   Filter,
   Check,
   ChevronDown,
+  Edit,
 } from 'lucide-react';
 import { Reservation } from '../../../domain/entities/Reservation';
+import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
@@ -74,6 +76,12 @@ export const ScheduleCalendar: React.FC = () => {
   const router = useRouter();
   const { currentUser } = useAuth();
   const { toast } = useToast();
+
+  const isPimpinan = currentUser?.role === 'verifikator_pimpinan';
+  const isAsisten = currentUser?.role === 'verifikator_asisten';
+  const isAdmin = currentUser?.role === 'admin';
+  const canManageSchedule = isPimpinan || isAsisten || isAdmin;
+
   const {
     reservations,
     rooms,
@@ -102,6 +110,7 @@ export const ScheduleCalendar: React.FC = () => {
 
   // Selected reservation for Detail Modal
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
+  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   // Drag-to-create or Click-to-create states
   const [isDragging, setIsDragging] = useState(false);
@@ -1215,7 +1224,22 @@ export const ScheduleCalendar: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex items-center justify-end gap-2">
+              {canManageSchedule && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="text-xs h-8 px-3 font-medium"
+                  onClick={() => {
+                    const res = selectedReservation;
+                    setSelectedReservation(null);
+                    setEditingReservation(res);
+                  }}
+                >
+                  <Edit className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Jadwal
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setSelectedReservation(null)}>
                 Tutup
               </Button>
@@ -1223,6 +1247,13 @@ export const ScheduleCalendar: React.FC = () => {
           </div>
         )}
       </Dialog>
+
+      {/* EDIT JADWAL DIALOG (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
+      <EditScheduleDialog
+        isOpen={!!editingReservation}
+        onClose={() => setEditingReservation(null)}
+        reservation={editingReservation}
+      />
     </div>
   );
 };

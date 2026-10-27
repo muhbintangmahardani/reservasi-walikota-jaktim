@@ -13,7 +13,6 @@ import {
   Edit,
   Tag,
   AlertCircle,
-  Send,
 } from 'lucide-react';
 import { format, parseISO } from 'date-fns';
 import { id as localeId } from 'date-fns/locale';
@@ -21,6 +20,7 @@ import { Reservation } from '../../../domain/entities/Reservation';
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
+import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -45,13 +45,8 @@ export const ApprovalDashboard: React.FC = () => {
   const [rejectionReason, setRejectionReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
 
-  const [editingItem, setEditingItem] = useState<Reservation | null>(null);
-  const [editExecutor, setEditExecutor] = useState('');
-  const [editAccompanying, setEditAccompanying] = useState('');
-  const [editEventName, setEditEventName] = useState('');
-  const [editStartTime, setEditStartTime] = useState('');
-  const [editEndTime, setEditEndTime] = useState('');
-  const [editDressCode, setEditDressCode] = useState('');
+  // Edit schedule state (menggunakan modal kelola jadwal komprehensif)
+  const [editingSchedule, setEditingSchedule] = useState<Reservation | null>(null);
 
   const isAsisten = currentUser?.role === 'verifikator_asisten';
 
@@ -121,49 +116,6 @@ export const ApprovalDashboard: React.FC = () => {
     }
   };
 
-  const handleOpenEditModal = (res: Reservation) => {
-    setEditingItem(res);
-    setEditExecutor(res.executorOfficial || '');
-    setEditAccompanying(res.accompanyingOfficial || '');
-    setEditEventName(res.eventName);
-    setEditStartTime(res.startTime);
-    setEditEndTime(res.endTime);
-    setEditDressCode(res.dressCode || '');
-  };
-
-  const handleSaveEdit = async () => {
-    if (!editingItem) return;
-
-    let updateData: Partial<Reservation> = {};
-    let notifyMsg = '';
-
-    if (isAsisten) {
-      updateData = {
-        executorOfficial: editExecutor,
-        accompanyingOfficial: editAccompanying,
-      };
-      notifyMsg = `Asisten (${currentUser?.fullName || 'Asisten'}) telah memperbarui penugasan Pejabat Pelaksana: "${editExecutor}" dan Pendamping: "${editAccompanying}" untuk "${editingItem.eventName}".`;
-    } else {
-      updateData = {
-        eventName: editEventName,
-        startTime: editStartTime,
-        endTime: editEndTime,
-        executorOfficial: editExecutor,
-        accompanyingOfficial: editAccompanying,
-        dressCode: editDressCode,
-      };
-      notifyMsg = `Pimpinan (${currentUser?.fullName || 'Pimpinan'}) telah memperbarui detail agenda "${editEventName}" (${editStartTime} - ${editEndTime}).`;
-    }
-
-    await updateReservation(editingItem.id, updateData, notifyMsg);
-    toast({
-      title: 'Perubahan Disimpan',
-      description: 'Detail pejabat dan jadwal kegiatan berhasil diperbarui.',
-      variant: 'success',
-    });
-    setEditingItem(null);
-  };
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -176,8 +128,8 @@ export const ApprovalDashboard: React.FC = () => {
             Otoritas saat ini:{' '}
             <span className="font-medium text-foreground">
               {isAsisten
-                ? 'Asisten (Verifikasi + Edit Pejabat Pelaksana & Pendamping)'
-                : 'Pimpinan / Admin (Otoritas Penuh Seluruh Field)'}
+                ? 'Asisten (Verifikasi & Kelola Seluruh Data Jadwal)'
+                : 'Pimpinan / Admin (Otoritas Penuh Seluruh Field & Persetujuan)'}
             </span>
           </p>
         </div>
@@ -328,10 +280,10 @@ export const ApprovalDashboard: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => handleOpenEditModal(item)}
+                    onClick={() => setEditingSchedule(item)}
                   >
                     <Edit className="w-3.5 h-3.5 mr-1.5" />
-                    {isAsisten ? 'Edit Pejabat' : 'Edit Agenda'}
+                    Edit Jadwal
                   </Button>
                 </div>
               </CardContent>
@@ -441,98 +393,12 @@ export const ApprovalDashboard: React.FC = () => {
         )}
       </Dialog>
 
-      {/* MODAL 3: EDIT RESERVASI (DENGAN RESTRIKSI ROLE ASISTEN VS PIMPINAN) */}
-      <Dialog
-        isOpen={!!editingItem}
-        onClose={() => setEditingItem(null)}
-        title="Sunting Rincian Agenda"
-        description={
-          isAsisten
-            ? 'Role Asisten: Hanya kolom Pejabat Pelaksana & Pendamping yang aktif diedit'
-            : 'Role Pimpinan / Admin: Akses penuh mengubah seluruh data'
-        }
-      >
-        {editingItem && (
-          <div className="space-y-4 text-xs">
-            {isAsisten && (
-              <div className="p-2.5 rounded-md border border-amber-200 bg-amber-50 text-[11px] text-amber-900 flex items-center gap-2">
-                <AlertCircle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
-                <span>Otoritas Asisten terbatas pada penugasan pejabat pelaksana dan pendamping.</span>
-              </div>
-            )}
-
-            <div className="space-y-3">
-              <div className="space-y-1">
-                <label className="text-muted-foreground">Nama Acara</label>
-                <Input
-                  disabled={isAsisten}
-                  value={editEventName}
-                  onChange={(e) => setEditEventName(e.target.value)}
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <label className="text-muted-foreground">Jam Mulai</label>
-                  <Input
-                    type="time"
-                    disabled={isAsisten}
-                    value={editStartTime}
-                    onChange={(e) => setEditStartTime(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="text-muted-foreground">Jam Selesai</label>
-                  <Input
-                    type="time"
-                    disabled={isAsisten}
-                    value={editEndTime}
-                    onChange={(e) => setEditEndTime(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              {/* Pejabat Pelaksana & Pendamping (Selalu aktif) */}
-              <div className="p-3 rounded-md bg-muted/40 border border-border/80 space-y-2.5">
-                <div className="space-y-1">
-                  <label className="font-semibold text-foreground">Pejabat Pelaksana * (Aktif)</label>
-                  <Input
-                    required
-                    value={editExecutor}
-                    onChange={(e) => setEditExecutor(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-1">
-                  <label className="font-semibold text-foreground">Pejabat Pendamping (Aktif)</label>
-                  <Input
-                    value={editAccompanying}
-                    onChange={(e) => setEditAccompanying(e.target.value)}
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <label className="text-muted-foreground">Pakaian (Dress Code)</label>
-                <Input
-                  disabled={isAsisten}
-                  value={editDressCode}
-                  onChange={(e) => setEditDressCode(e.target.value)}
-                />
-              </div>
-            </div>
-
-            <div className="pt-3 border-t border-border/60 flex justify-end gap-2">
-              <Button variant="outline" size="sm" onClick={() => setEditingItem(null)}>
-                Batal
-              </Button>
-              <Button size="sm" onClick={handleSaveEdit}>
-                <Send className="w-3.5 h-3.5 mr-1.5" />
-                Simpan Perubahan
-              </Button>
-            </div>
-          </div>
-        )}
-      </Dialog>
+      {/* MODAL 3: KELOLA & EDIT JADWAL TERPADU (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
+      <EditScheduleDialog
+        isOpen={!!editingSchedule}
+        onClose={() => setEditingSchedule(null)}
+        reservation={editingSchedule}
+      />
     </div>
   );
 };

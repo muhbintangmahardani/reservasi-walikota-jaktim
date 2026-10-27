@@ -14,10 +14,12 @@ import {
   AlertCircle,
   Shirt,
   Info,
+  Edit,
 } from 'lucide-react';
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Reservation } from '../../../domain/entities/Reservation';
+import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -46,13 +48,19 @@ const LEADERSHIP_ROLES: LeaderRoleConfig[] = [
 
 export const JadwalPimpinanView: React.FC = () => {
   const { reservations, picContacts, isLoading } = useReservations();
-  const { allUsers } = useAuth();
+  const { allUsers, currentUser } = useAuth();
+
+  const isPimpinan = currentUser?.role === 'verifikator_pimpinan';
+  const isAsisten = currentUser?.role === 'verifikator_asisten';
+  const isAdmin = currentUser?.role === 'admin';
+  const canManageSchedule = isPimpinan || isAsisten || isAdmin;
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLeader, setSelectedLeader] = useState('all');
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'today' | 'week'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'disetujui' | 'menunggu'>('all');
   const [selectedAgenda, setSelectedAgenda] = useState<Reservation | null>(null);
+  const [editingSchedule, setEditingSchedule] = useState<Reservation | null>(null);
 
   // Filter all reservations that involve leadership (both approved and pending)
   const leadershipAgendas = useMemo(() => {
@@ -210,9 +218,15 @@ export const JadwalPimpinanView: React.FC = () => {
             <h1 className="text-xl font-bold tracking-tight text-foreground">
               Jadwal Pimpinan
             </h1>
-            <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground border-border">
-              View Only
-            </Badge>
+            {canManageSchedule ? (
+              <Badge variant="default" className="text-[10px] font-medium bg-primary text-primary-foreground border-primary">
+                Kelola & Edit Jadwal Aktif
+              </Badge>
+            ) : (
+              <Badge variant="outline" className="text-[10px] font-medium text-muted-foreground border-border">
+                View Only
+              </Badge>
+            )}
           </div>
           <p className="text-xs text-muted-foreground mt-0.5">
             Agenda resmi Walikota, Wakil Walikota, Sekretaris Kota, dan para Asisten untuk koordinasi OPD.
@@ -451,8 +465,22 @@ export const JadwalPimpinanView: React.FC = () => {
                     </div>
                   </div>
 
-                  {/* Right: Detail button */}
-                  <div className="shrink-0 pt-2 md:pt-0 w-full md:w-auto flex justify-end border-t md:border-t-0 border-border/50">
+                  {/* Right: Action buttons */}
+                  <div className="shrink-0 pt-2 md:pt-0 w-full md:w-auto flex items-center justify-end gap-2 border-t md:border-t-0 border-border/50">
+                    {canManageSchedule && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="text-xs h-7 px-2.5 font-medium border-border/80 hover:bg-primary/10 hover:text-primary transition-colors"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setEditingSchedule(res);
+                        }}
+                      >
+                        <Edit className="w-3 h-3 mr-1 text-primary" />
+                        Edit Jadwal
+                      </Button>
+                    )}
                     <Button variant="outline" size="sm" className="text-xs h-7 px-3">
                       Lihat Detail
                     </Button>
@@ -535,7 +563,22 @@ export const JadwalPimpinanView: React.FC = () => {
               </div>
             </div>
 
-            <div className="pt-2 flex justify-end">
+            <div className="pt-2 flex items-center justify-end gap-2">
+              {canManageSchedule && (
+                <Button
+                  variant="default"
+                  size="sm"
+                  className="text-xs h-8 px-3 font-medium"
+                  onClick={() => {
+                    const agenda = selectedAgenda;
+                    setSelectedAgenda(null);
+                    setEditingSchedule(agenda);
+                  }}
+                >
+                  <Edit className="w-3.5 h-3.5 mr-1.5" />
+                  Edit Jadwal Ini
+                </Button>
+              )}
               <Button variant="outline" size="sm" onClick={() => setSelectedAgenda(null)}>
                 Tutup
               </Button>
@@ -543,6 +586,13 @@ export const JadwalPimpinanView: React.FC = () => {
           </div>
         )}
       </Dialog>
+
+      {/* EDIT JADWAL DIALOG (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
+      <EditScheduleDialog
+        isOpen={!!editingSchedule}
+        onClose={() => setEditingSchedule(null)}
+        reservation={editingSchedule}
+      />
     </div>
   );
 };
