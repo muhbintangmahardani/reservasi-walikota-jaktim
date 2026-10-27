@@ -1,7 +1,7 @@
 import { NotificationItem, PicContact, Category } from '../entities/Category';
 
 export interface INotificationRepository {
-  getNotificationsByUserId(userId: string): Promise<NotificationItem[]>;
+  getNotificationsByUserId(userId: string, userRole?: string): Promise<NotificationItem[]>;
   createNotification(notification: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>): Promise<NotificationItem>;
   markAsRead(id: string): Promise<boolean>;
   markAllAsRead(userId: string): Promise<boolean>;

@@ -12,6 +12,8 @@ interface AuthContextType {
   logout: () => void;
   switchUser: (userId: string) => void;
   switchRole: (role: UserRole) => void;
+  updateCurrentUser: (updated: Partial<UserProfile>) => void;
+  refreshUsers: () => Promise<void>;
   isLoading: boolean;
 }
 
@@ -98,6 +100,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const refreshUsers = async () => {
+    const userRepo = getUserRepository();
+    const users = await userRepo.getAllUsers();
+    setAllUsers(users);
+    if (currentUser) {
+      const refreshed = users.find((u) => u.id === currentUser.id);
+      if (refreshed) {
+        setCurrentUser(refreshed);
+        setAuthCookie(refreshed);
+      }
+    }
+  };
+
+  const updateCurrentUser = (updated: Partial<UserProfile>) => {
+    if (!currentUser) return;
+    const updatedUser: UserProfile = { ...currentUser, ...updated };
+    setCurrentUser(updatedUser);
+    setAllUsers((prev) =>
+      prev.map((u) => (u.id === updatedUser.id ? updatedUser : u))
+    );
+    setAuthCookie(updatedUser);
+  };
+
   const switchUser = (userId: string) => {
     const user = allUsers.find((u) => u.id === userId);
     if (user) {
@@ -112,17 +137,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <div className="w-8 h-8 border-3 border-zinc-900 dark:border-zinc-100 border-t-transparent rounded-full animate-spin"></div>
-          <p className="text-xs font-medium text-muted-foreground">Memuat Sistem E-Reservasi Walikota Jaktim...</p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <AuthContext.Provider
       value={{
@@ -133,6 +147,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         logout,
         switchUser,
         switchRole,
+        updateCurrentUser,
+        refreshUsers,
         isLoading,
       }}
     >

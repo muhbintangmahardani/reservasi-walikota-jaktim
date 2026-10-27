@@ -1,6 +1,7 @@
 import { Reservation, ReservationFilter } from '../../domain/entities/Reservation';
 import { IReservationRepository } from '../../domain/repositories/IReservationRepository';
 import { createClient } from '../supabase/client';
+import { getWIBISOString } from '../../lib/wib-time';
 
 export class SupabaseReservationRepository implements IReservationRepository {
   private supabase = createClient();
@@ -207,6 +208,7 @@ export class SupabaseReservationRepository implements IReservationRepository {
       }
     }
 
+    const nowWib = getWIBISOString();
     const { data: inserted, error } = await this.supabase
       .from('reservations')
       .insert({
@@ -222,6 +224,8 @@ export class SupabaseReservationRepository implements IReservationRepository {
         dress_code: data.dressCode,
         letter_origin: data.letterOrigin,
         status: 'menunggu',
+        created_at: nowWib,
+        updated_at: nowWib,
       })
       .select(`
         *,
@@ -248,7 +252,7 @@ export class SupabaseReservationRepository implements IReservationRepository {
     if (data.categoryId !== undefined) payload.category_id = data.categoryId;
     if (data.rejectionReason !== undefined) payload.rejection_reason = data.rejectionReason;
 
-    payload.updated_at = new Date().toISOString();
+    payload.updated_at = getWIBISOString();
 
     const { data: updated, error } = await this.supabase
       .from('reservations')

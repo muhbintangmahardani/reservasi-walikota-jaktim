@@ -1,6 +1,7 @@
 import { UserProfile } from '../../domain/entities/UserProfile';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { INITIAL_USERS } from '../mock-data/seedUsers';
+import { getWIBISOString } from '../../lib/wib-time';
 
 const STORAGE_KEY = 'e_reservasi_users_v1';
 
@@ -39,7 +40,7 @@ export class MockUserRepository implements IUserRepository {
     const newUser: UserProfile = {
       ...userData,
       id: `user-${Date.now()}`,
-      createdAt: new Date().toISOString(),
+      createdAt: getWIBISOString(),
     };
     list.push(newUser);
     this.saveUsers(list);

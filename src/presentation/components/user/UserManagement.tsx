@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   UserPlus,
   Mail,
@@ -10,6 +10,9 @@ import {
   Edit,
   Trash2,
   KeyRound,
+  ShieldAlert,
+  Save,
+  Check,
 } from 'lucide-react';
 import { UserProfile, UserRole, UserType } from '../../../domain/entities/UserProfile';
 import { useAuth } from '../../context/AuthContext';
@@ -29,6 +32,14 @@ import { Button } from '../ui/button';
 import { Input } from '../ui/input';
 import { Dialog } from '../ui/dialog';
 import { Skeleton } from '../ui/skeleton';
+import { Alert, AlertTitle, AlertDescription } from '../ui/alert';
+import {
+  getUserPassword,
+  setUserPassword,
+  getPendingPasswordResetRequests,
+  resolvePasswordResetRequest,
+  PasswordResetRequest,
+} from '../../../lib/auth-passwords';
 
 export const UserManagement: React.FC = () => {
   const { allUsers } = useAuth();
@@ -46,12 +57,23 @@ export const UserManagement: React.FC = () => {
   const [email, setEmail] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
 
+  // Password reset dialog state
+  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const [resetTargetUser, setResetTargetUser] = useState<UserProfile | null>(null);
+  const [newPasswordInput, setNewPasswordInput] = useState('walikota2026');
+  const [pendingResets, setPendingResets] = useState<PasswordResetRequest[]>([]);
+
   const userRepo = getUserRepository();
+
+  useEffect(() => {
+    setPendingResets(getPendingPasswordResetRequests());
+  }, []);
 
   const refreshUsers = async () => {
     setIsRefreshing(true);
     const list = await userRepo.getAllUsers();
     setUsersList(list);
+    setPendingResets(getPendingPasswordResetRequests());
     setIsRefreshing(false);
   };
 
@@ -103,9 +125,11 @@ export const UserManagement: React.FC = () => {
         phoneNumber,
         isActive: true,
       });
+      // Set initial default password
+      setUserPassword(email, 'walikota2026');
       toast({
         title: 'Pengguna Berhasil Ditambahkan',
-        description: `Akun baru ${fullName} telah didaftarkan ke sistem.`,
+        description: `Akun baru ${fullName} telah didaftarkan dengan sandi default "walikota2026".`,
         variant: 'success',
       });
     }
@@ -135,12 +159,38 @@ export const UserManagement: React.FC = () => {
     });
   };
 
-  const handleResetPassword = (u: UserProfile) => {
+  const handleOpenResetModal = (u: UserProfile) => {
+    setResetTargetUser(u);
+    setNewPasswordInput('walikota2026');
+    setIsResetModalOpen(true);
+  };
+
+  const handleSaveNewPassword = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!resetTargetUser) return;
+
+    if (newPasswordInput.trim().length < 6) {
+      toast({
+        title: 'Validasi Gagal',
+        description: 'Kata sandi baru minimal harus 6 karakter.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    // Set new password
+    setUserPassword(resetTargetUser.email, newPasswordInput.trim());
+    resolvePasswordResetRequest(resetTargetUser.email, newPasswordInput.trim());
+    setPendingResets(getPendingPasswordResetRequests());
+
     toast({
-      title: 'Tautan Reset Terkirim',
-      description: `Instruksi pemulihan kata sandi telah dikirim ke: ${u.email}`,
-      variant: 'info',
+      title: 'Kata Sandi Berhasil Direset',
+      description: `Kata sandi akun ${resetTargetUser.fullName} (${resetTargetUser.email}) berhasil diubah.`,
+      variant: 'success',
     });
+
+    setIsResetModalOpen(false);
+    setResetTargetUser(null);
   };
 
   return (
@@ -161,6 +211,55 @@ export const UserManagement: React.FC = () => {
           Tambah Pengguna
         </Button>
       </div>
+
+      {/* Pending Reset Password Banner for Admin */}
+      {pendingResets.length > 0 && (
+        <Alert variant="warning" className="border-amber-500/40 bg-amber-50/70 dark:bg-amber-950/30">
+          <ShieldAlert className="w-4 h-4 text-amber-600 dark:text-amber-400" />
+          <AlertTitle className="text-amber-800 dark:text-amber-300 font-bold">
+            Permintaan Reset Kata Sandi Masuk ({pendingResets.length})
+          </AlertTitle>
+          <AlertDescription className="text-amber-800/90 dark:text-amber-300/90 text-xs">
+            Pengguna berikut mengajukan permohonan pemulihan sandi akun kedinasan:
+            <div className="mt-2.5 flex flex-wrap gap-2">
+              {pendingResets.map((req) => (
+                <div
+                  key={req.email}
+                  className="flex items-center gap-2 bg-background/80 dark:bg-card px-2.5 py-1 rounded-md border border-amber-300 dark:border-amber-800 text-[11px]"
+                >
+                  <span className="font-mono font-medium">{req.email}</span>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="h-6 text-[10px] px-2 font-semibold"
+                    onClick={() => {
+                      const found = usersList.find((u) => u.email.toLowerCase() === req.email.toLowerCase());
+                      if (found) {
+                        handleOpenResetModal(found);
+                      } else {
+                        setResetTargetUser({
+                          id: 'custom',
+                          fullName: req.email,
+                          email: req.email,
+                          unitName: 'Instansi Kedinasan',
+                          role: 'user_bagian',
+                          userType: 'internal',
+                          isActive: true,
+                          createdAt: new Date().toISOString(),
+                        });
+                        setNewPasswordInput('walikota2026');
+                        setIsResetModalOpen(true);
+                      }
+                    }}
+                  >
+                    Reset Sandi
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Users Table with isolated horizontal scroll */}
       <Card className="overflow-hidden border border-border shadow-xs">
@@ -270,8 +369,8 @@ export const UserManagement: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="iconSm"
-                      onClick={() => handleResetPassword(user)}
-                      title="Reset Kata Sandi"
+                      onClick={() => handleOpenResetModal(user)}
+                      title="Reset Kata Sandi Akun"
                     >
                       <KeyRound className="w-3.5 h-3.5 text-muted-foreground" />
                     </Button>
@@ -377,6 +476,62 @@ export const UserManagement: React.FC = () => {
             </Button>
           </div>
         </form>
+      </Dialog>
+
+      {/* MODAL RESET PASSWORD ADMIN */}
+      <Dialog
+        isOpen={isResetModalOpen}
+        onClose={() => {
+          setIsResetModalOpen(false);
+          setResetTargetUser(null);
+        }}
+        title="Reset Kata Sandi Akun"
+        description="Tetapkan kata sandi baru untuk akun kedinasan pegawai."
+      >
+        {resetTargetUser && (
+          <form onSubmit={handleSaveNewPassword} className="space-y-4 text-xs">
+            <div className="p-3 rounded-lg bg-muted/40 border border-border/60 space-y-1">
+              <div className="font-semibold text-foreground text-xs">{resetTargetUser.fullName}</div>
+              <div className="text-[11px] text-muted-foreground font-mono">{resetTargetUser.email}</div>
+              <div className="text-[11px] text-muted-foreground">
+                {resetTargetUser.unitName} &bull; <span className="font-semibold">{resetTargetUser.role}</span>
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="text-foreground font-medium text-xs">Kata Sandi Baru</label>
+              <Input
+                required
+                type="text"
+                placeholder="Minimal 6 karakter"
+                value={newPasswordInput}
+                onChange={(e) => setNewPasswordInput(e.target.value)}
+                className="font-mono text-xs h-9"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Sandi bawaan sistem: <span className="font-mono font-semibold text-foreground">walikota2026</span>
+              </p>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsResetModalOpen(false);
+                  setResetTargetUser(null);
+                }}
+              >
+                Batal
+              </Button>
+              <Button type="submit" size="sm" className="gap-1.5">
+                <Check className="w-3.5 h-3.5" />
+                Simpan & Terbitkan Sandi
+              </Button>
+            </div>
+          </form>
+        )}
       </Dialog>
     </div>
   );

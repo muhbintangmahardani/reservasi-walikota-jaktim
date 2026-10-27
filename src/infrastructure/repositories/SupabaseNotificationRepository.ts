@@ -5,15 +5,21 @@ import {
   ICategoryRepository,
 } from '../../domain/repositories/INotificationRepository';
 import { createClient } from '../supabase/client';
+import { getWIBISOString } from '../../lib/wib-time';
 
 export class SupabaseNotificationRepository implements INotificationRepository {
   private supabase = createClient();
 
-  async getNotificationsByUserId(userId: string): Promise<NotificationItem[]> {
+  async getNotificationsByUserId(userId: string, userRole?: string): Promise<NotificationItem[]> {
+    const recipients = [userId, 'all'];
+    if (userRole === 'admin') {
+      recipients.push('admin');
+    }
+
     const { data, error } = await this.supabase
       .from('notifications')
       .select('*')
-      .eq('recipient_id', userId)
+      .in('recipient_id', recipients)
       .order('created_at', { ascending: false });
 
     if (error) throw error;
@@ -32,6 +38,7 @@ export class SupabaseNotificationRepository implements INotificationRepository {
   async createNotification(
     data: Omit<NotificationItem, 'id' | 'createdAt' | 'isRead'>
   ): Promise<NotificationItem> {
+    const nowWib = getWIBISOString();
     const { data: inserted, error } = await this.supabase
       .from('notifications')
       .insert({
@@ -41,6 +48,7 @@ export class SupabaseNotificationRepository implements INotificationRepository {
         message: data.message,
         type: data.type,
         is_read: false,
+        created_at: nowWib,
       })
       .select()
       .single();

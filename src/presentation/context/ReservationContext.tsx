@@ -65,7 +65,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         roomRepo.getAllRooms(),
         categoryRepo.getAllCategories(),
         picContactRepo.getAllPicContacts(),
-        currentUser ? notificationRepo.getNotificationsByUserId(currentUser.id) : Promise.resolve([]),
+        currentUser ? notificationRepo.getNotificationsByUserId(currentUser.id, currentUser.role) : Promise.resolve([]),
       ]);
       // Settling delay so skeleton shimmer is visible during initial load
       await new Promise((resolve) => setTimeout(resolve, 400));
@@ -79,7 +79,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     } finally {
       setIsLoading(false);
     }
-  }, [currentUser?.id]);
+  }, [currentUser?.id, currentUser?.role]);
 
   useEffect(() => {
     loadData();

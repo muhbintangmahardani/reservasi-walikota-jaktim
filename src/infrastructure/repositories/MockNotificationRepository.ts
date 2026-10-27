@@ -5,6 +5,7 @@ import {
   ICategoryRepository,
 } from '../../domain/repositories/INotificationRepository';
 import { INITIAL_PIC_CONTACTS, INITIAL_CATEGORIES } from '../mock-data/seedUsers';
+import { getWIBISOString } from '../../lib/wib-time';
 
 const NOTIFS_STORAGE_KEY = 'e_reservasi_notifs_v1';
 
@@ -62,10 +63,12 @@ export class MockNotificationRepository implements INotificationRepository {
     }
   }
 
-  async getNotificationsByUserId(userId: string): Promise<NotificationItem[]> {
-    return this.getNotifs().filter(
-      (n) => n.recipientId === userId || n.recipientId === 'all'
-    );
+  async getNotificationsByUserId(userId: string, userRole?: string): Promise<NotificationItem[]> {
+    return this.getNotifs().filter((n) => {
+      if (n.recipientId === userId || n.recipientId === 'all') return true;
+      if (userRole === 'admin' && n.recipientId === 'admin') return true;
+      return false;
+    });
   }
 
   async createNotification(
@@ -76,7 +79,7 @@ export class MockNotificationRepository implements INotificationRepository {
       ...data,
       id: `notif-${Date.now()}`,
       isRead: false,
-      createdAt: new Date().toISOString(),
+      createdAt: getWIBISOString(),
     };
     list.unshift(newNotif);
     this.saveNotifs(list);

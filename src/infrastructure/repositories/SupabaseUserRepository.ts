@@ -1,6 +1,7 @@
 import { UserProfile } from '../../domain/entities/UserProfile';
 import { IUserRepository } from '../../domain/repositories/IUserRepository';
 import { createClient } from '../supabase/client';
+import { getWIBISOString } from '../../lib/wib-time';
 
 export class SupabaseUserRepository implements IUserRepository {
   private supabase = createClient();
@@ -41,6 +42,7 @@ export class SupabaseUserRepository implements IUserRepository {
   }
 
   async createUser(userData: Omit<UserProfile, 'id' | 'createdAt'>): Promise<UserProfile> {
+    const nowWib = getWIBISOString();
     const { data, error } = await this.supabase
       .from('profiles')
       .insert({
@@ -51,6 +53,8 @@ export class SupabaseUserRepository implements IUserRepository {
         email: userData.email,
         phone_number: userData.phoneNumber,
         is_active: userData.isActive,
+        created_at: nowWib,
+        updated_at: nowWib,
       })
       .select()
       .single();
@@ -69,7 +73,7 @@ export class SupabaseUserRepository implements IUserRepository {
     if (userData.phoneNumber !== undefined) payload.phone_number = userData.phoneNumber;
     if (userData.isActive !== undefined) payload.is_active = userData.isActive;
 
-    payload.updated_at = new Date().toISOString();
+    payload.updated_at = getWIBISOString();
 
     const { data, error } = await this.supabase
       .from('profiles')
