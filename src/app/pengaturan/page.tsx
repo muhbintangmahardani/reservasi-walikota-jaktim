@@ -50,7 +50,7 @@ export default function PengaturanProfilPage() {
 
   if (!currentUser) {
     return (
-      <div className="max-w-2xl mx-auto space-y-6">
+      <div className="w-full space-y-6 pb-12">
         <div className="pb-3 border-b border-border/60">
           <h1 className="text-xl font-bold tracking-tight text-foreground">
             Pengaturan Akun & Profil
@@ -162,7 +162,7 @@ export default function PengaturanProfilPage() {
   };
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 pb-12">
+    <div className="w-full space-y-6 pb-12">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 pb-3 border-b border-border/60">
         <div>
@@ -170,7 +170,7 @@ export default function PengaturanProfilPage() {
             Pengaturan Akun & Profil
           </h1>
           <p className="text-xs text-muted-foreground mt-0.5">
-            Informasi identitas akun kedinasan, kontak, keamanan kata sandi, dan manajemen sesi.
+            Informasi identitas akun kedinasan, kontak resmi, keamanan kata sandi, dan manajemen sesi.
           </p>
         </div>
 
@@ -187,15 +187,15 @@ export default function PengaturanProfilPage() {
         </Button>
       </div>
 
-      {/* Profil Ringkas Card */}
+      {/* Profil Ringkas Card (Full Width) */}
       <Card className="border border-border/70 shadow-xs">
         <CardHeader className="p-5 pb-3 border-b border-border/60">
           <div className="flex items-center gap-3">
-            <div className="w-11 h-11 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-base shadow-xs shrink-0">
+            <div className="w-12 h-12 rounded-lg bg-primary text-primary-foreground flex items-center justify-center font-bold text-lg shadow-xs shrink-0">
               {currentUser.fullName.charAt(0)}
             </div>
             <div className="min-w-0">
-              <h2 className="font-semibold text-sm text-foreground truncate">{currentUser.fullName}</h2>
+              <h2 className="font-semibold text-base text-foreground truncate">{currentUser.fullName}</h2>
               <p className="text-xs text-muted-foreground truncate">{currentUser.unitName}</p>
               <div className="flex items-center gap-2 mt-1">
                 <Badge variant="outline" className="text-[10px] font-mono capitalize">
@@ -208,180 +208,191 @@ export default function PengaturanProfilPage() {
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-5 space-y-4">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
-            <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-              <span className="text-muted-foreground block text-[10px] mb-0.5">Email Kedinasan Resmi:</span>
-              <span className="font-semibold text-foreground font-mono">{currentUser.email}</span>
+        <CardContent className="p-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3 text-xs">
+            <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+              <span className="text-muted-foreground block text-[10px] mb-1 font-medium">Email Kedinasan Resmi:</span>
+              <span className="font-semibold text-foreground font-mono text-xs">{currentUser.email}</span>
             </div>
-            <div className="p-3 rounded-lg bg-muted/40 border border-border/60">
-              <span className="text-muted-foreground block text-[10px] mb-0.5">Unit Kerja / OPD:</span>
-              <span className="font-semibold text-foreground">{currentUser.unitName}</span>
+            <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+              <span className="text-muted-foreground block text-[10px] mb-1 font-medium">Unit Kerja / OPD:</span>
+              <span className="font-semibold text-foreground text-xs">{currentUser.unitName}</span>
+            </div>
+            <div className="p-3.5 rounded-lg bg-muted/40 border border-border/60">
+              <span className="text-muted-foreground block text-[10px] mb-1 font-medium">Hak Akses Sistem:</span>
+              <span className="font-semibold text-foreground capitalize text-xs">{currentUser.role.replace('_', ' ')}</span>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Ubah Nomor Telepon (WhatsApp) */}
-      <Card className="border border-border/70 shadow-xs">
-        <CardHeader className="p-5 pb-3 border-b border-border/60">
-          <div className="flex items-center gap-2">
-            <Phone className="w-4 h-4 text-primary" />
-            <CardTitle className="text-sm font-semibold">Kontak WhatsApp Kedinasan</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Nomor ini akan digunakan sebagai kontak PIC untuk koordinasi peminjaman dan verifikasi ruangan.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-5">
-          {phoneMessage && (
-            <Alert
-              variant={phoneMessage.type === 'success' ? 'success' : 'destructive'}
-              className="mb-4"
-            >
-              {phoneMessage.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4" />
-              ) : (
-                <AlertTriangle className="w-4 h-4" />
-              )}
-              <AlertTitle>
-                {phoneMessage.type === 'success' ? 'Berhasil' : 'Peringatan'}
-              </AlertTitle>
-              <AlertDescription>{phoneMessage.text}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleSavePhone} className="space-y-4">
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Nomor Telepon / WhatsApp</label>
-              <Input
-                type="tel"
-                value={phoneNumber}
-                onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="Contoh: 08123456789 atau 628123456789"
-                className="text-xs h-9"
-                required
-              />
-              <p className="text-[11px] text-muted-foreground">
-                Gunakan nomor aktif yang terhubung dengan WhatsApp untuk konfirmasi otomatis.
-              </p>
-            </div>
-
-            <div className="flex justify-end">
-              <Button type="submit" size="sm" disabled={isSavingPhone} className="gap-1.5 text-xs">
-                <Save className="w-3.5 h-3.5" />
-                {isSavingPhone ? 'Menyimpan...' : 'Simpan Nomor Telepon'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
-
-      {/* Ganti Kata Sandi */}
-      <Card className="border border-border/70 shadow-xs">
-        <CardHeader className="p-5 pb-3 border-b border-border/60">
-          <div className="flex items-center gap-2">
-            <KeyRound className="w-4 h-4 text-primary" />
-            <CardTitle className="text-sm font-semibold">Keamanan & Ganti Kata Sandi</CardTitle>
-          </div>
-          <CardDescription className="text-xs">
-            Perbarui kata sandi akun kedinasan Anda secara berkala untuk menjaga keamanan data reservasi.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-5">
-          {passMessage && (
-            <Alert
-              variant={passMessage.type === 'success' ? 'success' : 'destructive'}
-              className="mb-4"
-            >
-              {passMessage.type === 'success' ? (
-                <CheckCircle2 className="w-4 h-4" />
-              ) : (
-                <AlertTriangle className="w-4 h-4" />
-              )}
-              <AlertTitle>
-                {passMessage.type === 'success' ? 'Berhasil' : 'Kesalahan Validasi'}
-              </AlertTitle>
-              <AlertDescription>{passMessage.text}</AlertDescription>
-            </Alert>
-          )}
-
-          <form onSubmit={handleChangePassword} className="space-y-4">
-            {/* Sandi Saat Ini */}
-            <div className="space-y-1.5">
-              <label className="text-xs font-medium text-foreground">Kata Sandi Saat Ini</label>
-              <div className="relative">
-                <Input
-                  type={showCurrentPass ? 'text' : 'password'}
-                  value={currentPassword}
-                  onChange={(e) => setCurrentPassword(e.target.value)}
-                  placeholder="Masukkan kata sandi lama Anda"
-                  className="text-xs h-9 pr-9 font-mono"
-                  required
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowCurrentPass(!showCurrentPass)}
-                  className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                >
-                  {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                </button>
+      {/* 2-Column Responsive Grid for Phone & Password Settings */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Ubah Nomor Telepon (WhatsApp) */}
+        <Card className="border border-border/70 shadow-xs flex flex-col justify-between">
+          <div>
+            <CardHeader className="p-5 pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <Phone className="w-4 h-4 text-primary" />
+                <CardTitle className="text-sm font-semibold">Kontak WhatsApp Kedinasan</CardTitle>
               </div>
-            </div>
+              <CardDescription className="text-xs">
+                Nomor ini digunakan sebagai kontak PIC untuk koordinasi peminjaman dan verifikasi ruangan rapat.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5">
+              {phoneMessage && (
+                <Alert
+                  variant={phoneMessage.type === 'success' ? 'success' : 'destructive'}
+                  className="mb-4"
+                >
+                  {phoneMessage.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4" />
+                  )}
+                  <AlertTitle>
+                    {phoneMessage.type === 'success' ? 'Berhasil' : 'Peringatan'}
+                  </AlertTitle>
+                  <AlertDescription>{phoneMessage.text}</AlertDescription>
+                </Alert>
+              )}
 
-            {/* Sandi Baru */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Kata Sandi Baru</label>
-                <div className="relative">
+              <form onSubmit={handleSavePhone} className="space-y-4">
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Nomor Telepon / WhatsApp</label>
                   <Input
-                    type={showNewPass ? 'text' : 'password'}
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Minimal 6 karakter"
-                    className="text-xs h-9 pr-9 font-mono"
+                    type="tel"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    placeholder="Contoh: 08123456789 atau 628123456789"
+                    className="text-xs h-9"
                     required
                   />
-                  <button
-                    type="button"
-                    onClick={() => setShowNewPass(!showNewPass)}
-                    className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
-                  >
-                    {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                  </button>
+                  <p className="text-[11px] text-muted-foreground">
+                    Gunakan nomor aktif yang terhubung dengan WhatsApp untuk konfirmasi otomatis.
+                  </p>
                 </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" size="sm" disabled={isSavingPhone} className="gap-1.5 text-xs">
+                    <Save className="w-3.5 h-3.5" />
+                    {isSavingPhone ? 'Menyimpan...' : 'Simpan Nomor Telepon'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </div>
+        </Card>
+
+        {/* Ganti Kata Sandi */}
+        <Card className="border border-border/70 shadow-xs flex flex-col justify-between">
+          <div>
+            <CardHeader className="p-5 pb-3 border-b border-border/60">
+              <div className="flex items-center gap-2">
+                <KeyRound className="w-4 h-4 text-primary" />
+                <CardTitle className="text-sm font-semibold">Keamanan & Ganti Kata Sandi</CardTitle>
               </div>
+              <CardDescription className="text-xs">
+                Perbarui kata sandi akun kedinasan Anda secara berkala untuk menjaga keamanan data reservasi.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="p-5">
+              {passMessage && (
+                <Alert
+                  variant={passMessage.type === 'success' ? 'success' : 'destructive'}
+                  className="mb-4"
+                >
+                  {passMessage.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4" />
+                  )}
+                  <AlertTitle>
+                    {passMessage.type === 'success' ? 'Berhasil' : 'Kesalahan Validasi'}
+                  </AlertTitle>
+                  <AlertDescription>{passMessage.text}</AlertDescription>
+                </Alert>
+              )}
 
-              <div className="space-y-1.5">
-                <label className="text-xs font-medium text-foreground">Konfirmasi Kata Sandi Baru</label>
-                <Input
-                  type="password"
-                  value={confirmPassword}
-                  onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Ulangi kata sandi baru"
-                  className="text-xs h-9 font-mono"
-                  required
-                />
-              </div>
-            </div>
+              <form onSubmit={handleChangePassword} className="space-y-4">
+                {/* Sandi Saat Ini */}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-medium text-foreground">Kata Sandi Saat Ini</label>
+                  <div className="relative">
+                    <Input
+                      type={showCurrentPass ? 'text' : 'password'}
+                      value={currentPassword}
+                      onChange={(e) => setCurrentPassword(e.target.value)}
+                      placeholder="Masukkan kata sandi lama Anda"
+                      className="text-xs h-9 pr-9 font-mono"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowCurrentPass(!showCurrentPass)}
+                      className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                    >
+                      {showCurrentPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+                </div>
 
-            <div className="flex justify-end pt-1">
-              <Button type="submit" size="sm" disabled={isSavingPass} className="gap-1.5 text-xs">
-                <KeyRound className="w-3.5 h-3.5" />
-                {isSavingPass ? 'Menyimpan Sandi...' : 'Perbarui Kata Sandi'}
-              </Button>
-            </div>
-          </form>
-        </CardContent>
-      </Card>
+                {/* Sandi Baru */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Kata Sandi Baru</label>
+                    <div className="relative">
+                      <Input
+                        type={showNewPass ? 'text' : 'password'}
+                        value={newPassword}
+                        onChange={(e) => setNewPassword(e.target.value)}
+                        placeholder="Minimal 6 karakter"
+                        className="text-xs h-9 pr-9 font-mono"
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowNewPass(!showNewPass)}
+                        className="absolute right-2.5 top-2.5 text-muted-foreground hover:text-foreground"
+                      >
+                        {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                      </button>
+                    </div>
+                  </div>
 
-      {/* Sesi & Logout Section */}
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-medium text-foreground">Konfirmasi Kata Sandi Baru</label>
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Ulangi kata sandi baru"
+                      className="text-xs h-9 font-mono"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="flex justify-end pt-2">
+                  <Button type="submit" size="sm" disabled={isSavingPass} className="gap-1.5 text-xs">
+                    <KeyRound className="w-3.5 h-3.5" />
+                    {isSavingPass ? 'Menyimpan Sandi...' : 'Perbarui Kata Sandi'}
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </div>
+        </Card>
+      </div>
+
+      {/* Sesi & Logout Section (Full Width) */}
       <Card className="border border-rose-200 dark:border-rose-950/60 bg-rose-50/20 dark:bg-rose-950/10 shadow-xs">
         <CardContent className="p-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div>
             <h3 className="text-xs font-bold text-rose-700 dark:text-rose-400">Keluar dari Sesi Kedinasan</h3>
             <p className="text-[11px] text-muted-foreground mt-0.5">
-              Akhiri sesi aktif Anda di komputer ini untuk memastikan privasi data tetap terjaga.
+              Akhiri sesi aktif Anda di komputer ini untuk memastikan privasi data dan keamanan akun tetap terjaga.
             </p>
           </div>
           <Button

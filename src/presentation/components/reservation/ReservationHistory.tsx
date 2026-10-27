@@ -36,6 +36,7 @@ export const ReservationHistory: React.FC = () => {
 
   const [deletingId, setDeletingId] = useState<string | null>(null);
   const [selectedPicModal, setSelectedPicModal] = useState<Reservation | null>(null);
+  const [reservationToCancel, setReservationToCancel] = useState<Reservation | null>(null);
   const [scopeFilter, setScopeFilter] = useState<'my' | 'all'>('my');
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'menunggu' | 'disetujui' | 'ditolak'>('all');
@@ -83,26 +84,26 @@ export const ReservationHistory: React.FC = () => {
     });
   }, [scopedReservations, statusFilter, searchQuery]);
 
-  const handleDelete = async (id: string) => {
-    if (confirm('Batalkan dan hapus pengajuan reservasi ini?')) {
-      setDeletingId(id);
-      try {
-        await deleteReservation(id);
-        toast({
-          title: 'Reservasi Berhasil Dibatalkan',
-          description: 'Pengajuan reservasi ruangan telah dihapus dari sistem.',
-          variant: 'destructive',
-        });
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'Gagal membatalkan reservasi';
-        toast({
-          title: 'Gagal Membatalkan',
-          description: msg,
-          variant: 'destructive',
-        });
-      } finally {
-        setDeletingId(null);
-      }
+  const handleConfirmCancelReservation = async () => {
+    if (!reservationToCancel) return;
+    setDeletingId(reservationToCancel.id);
+    try {
+      await deleteReservation(reservationToCancel.id);
+      toast({
+        title: 'Reservasi Berhasil Dibatalkan',
+        description: 'Pengajuan reservasi ruangan telah dihapus dari sistem.',
+        variant: 'destructive',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal membatalkan reservasi';
+      toast({
+        title: 'Gagal Membatalkan',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setDeletingId(null);
+      setReservationToCancel(null);
     }
   };
 
@@ -342,11 +343,11 @@ export const ReservationHistory: React.FC = () => {
                         variant="destructive"
                         size="sm"
                         disabled={deletingId === item.id}
-                        onClick={() => handleDelete(item.id)}
+                        onClick={() => setReservationToCancel(item)}
                         className="text-xs h-8"
                       >
                         <Trash2 className="w-3 h-3 mr-1.5" />
-                        <span>{deletingId === item.id ? 'Menghapus...' : 'Batalkan'}</span>
+                        <span>Batalkan</span>
                       </Button>
                     ) : isApproved ? (
                       <Button
@@ -407,6 +408,59 @@ export const ReservationHistory: React.FC = () => {
             <div className="pt-2 flex justify-end">
               <Button variant="outline" size="sm" onClick={() => setSelectedPicModal(null)}>
                 Tutup
+              </Button>
+            </div>
+          </div>
+        )}
+      </Dialog>
+
+      {/* SHADCN CONFIRMATION MODAL CANCEL RESERVATION */}
+      <Dialog
+        isOpen={!!reservationToCancel}
+        onClose={() => {
+          if (!deletingId) setReservationToCancel(null);
+        }}
+        title="Konfirmasi Batalkan Reservasi"
+        description="Pengajuan peminjaman ruangan akan dibatalkan dan dihapus dari sistem."
+      >
+        {reservationToCancel && (
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 space-y-1">
+              <div className="font-semibold text-rose-800 dark:text-rose-300">
+                {reservationToCancel.eventName}
+              </div>
+              <div className="text-muted-foreground">
+                Ruangan: <span className="font-medium text-foreground">{reservationToCancel.roomName}</span>
+              </div>
+              <div className="text-muted-foreground">
+                Jadwal: {reservationToCancel.eventDate} ({reservationToCancel.startTime} - {reservationToCancel.endTime} WIB)
+              </div>
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed">
+              Apakah Anda yakin ingin membatalkan dan menghapus pengajuan agenda kegiatan ini?
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setReservationToCancel(null)}
+                disabled={!!deletingId}
+              >
+                Kembali
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmCancelReservation}
+                disabled={!!deletingId}
+                className="gap-1.5"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                {deletingId ? 'Membatalkan...' : 'Ya, Batalkan Reservasi'}
               </Button>
             </div>
           </div>

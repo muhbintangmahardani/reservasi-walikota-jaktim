@@ -1,44 +1,62 @@
 /**
  * Utility untuk standarisasi waktu Indonesia Barat (WIB - UTC+7)
- * Memastikan timestamp di Supabase dan antarmuka pengguna konsisten dan akurat.
+ * Memastikan nilai yang tersimpan di Supabase maupun yang ditampilkan di antarmuka pengguna
+ * persis sesuai jam pembuatan lokal (misal: 13:45 WIB tidak berubah menjadi 06:45 UTC).
  */
 
 export const getWIBISOString = (date: Date = new Date()): string => {
-  const pad = (n: number) => String(n).padStart(2, '0');
-  const padMs = (n: number) => String(n).padStart(3, '0');
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Jakarta',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: false,
+  });
 
-  const d = new Date(date);
-  // Hitung offset menit ke UTC, lalu tambah 7 jam (WIB)
-  const utcMs = d.getTime() + d.getTimezoneOffset() * 60000;
-  const wib = new Date(utcMs + 7 * 3600000);
+  const parts = formatter.formatToParts(date);
+  const p: Record<string, string> = {};
+  parts.forEach(({ type, value }) => {
+    p[type] = value;
+  });
 
-  const y = wib.getFullYear();
-  const m = pad(wib.getMonth() + 1);
-  const day = pad(wib.getDate());
-  const h = pad(wib.getHours());
-  const min = pad(wib.getMinutes());
-  const s = pad(wib.getSeconds());
-  const ms = padMs(wib.getMilliseconds());
+  const ms = String(date.getMilliseconds()).padStart(3, '0');
 
-  return `${y}-${m}-${day}T${h}:${min}:${s}.${ms}+07:00`;
+  // Format "YYYY-MM-DD HH:mm:ss.SSS" langsung disimpan ke Supabase
+  // sehingga di Supabase Table Editor jam yang muncul persis jam lokal pembuat (misal 13:45)
+  return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}:${p.second}.${ms}`;
 };
 
 export const formatWIBDateTime = (isoString?: string | null): string => {
   if (!isoString) return '-';
   try {
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return isoString;
-    return (
-      new Intl.DateTimeFormat('id-ID', {
-        timeZone: 'Asia/Jakarta',
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: false,
-      }).format(date) + ' WIB'
-    );
+    const clean = isoString.trim();
+    // Parse format YYYY-MM-DD HH:mm:ss atau ISO
+    const match = clean.match(/^(\d{4})-(\d{2})-(\d{2})[T\s](\d{2}):(\d{2})/);
+    if (match) {
+      const [, y, m, d, hh, mm] = match;
+      const monthNames = ['Jan', 'Feb', 'Mar', 'Apr', 'Mei', 'Jun', 'Jul', 'Agu', 'Sep', 'Okt', 'Nov', 'Des'];
+      const monthIdx = parseInt(m, 10) - 1;
+      return `${d} ${monthNames[monthIdx] || m} ${y}, ${hh}:${mm} WIB`;
+    }
+
+    const date = new Date(clean);
+    if (!isNaN(date.getTime())) {
+      return (
+        new Intl.DateTimeFormat('id-ID', {
+          timeZone: 'Asia/Jakarta',
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric',
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false,
+        }).format(date) + ' WIB'
+      );
+    }
+    return clean;
   } catch {
     return isoString;
   }

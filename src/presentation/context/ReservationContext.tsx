@@ -218,8 +218,22 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   };
 
   const toggleRoomStatus = async (id: string) => {
-    await roomRepo.toggleRoomStatus(id);
-    await loadData();
+    // 1. Optimistic update agar badge dan status di UI langsung berubah seketika
+    setRooms((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, isActive: !r.isActive } : r))
+    );
+    try {
+      const updated = await roomRepo.toggleRoomStatus(id);
+      setRooms((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, isActive: updated.isActive } : r))
+      );
+    } catch (err) {
+      // Revert jika gagal
+      setRooms((prev) =>
+        prev.map((r) => (r.id === id ? { ...r, isActive: !r.isActive } : r))
+      );
+      throw err;
+    }
   };
 
   const checkConflict = async (roomId: string, date: string, startTime: string, endTime: string, excludeId?: string) => {

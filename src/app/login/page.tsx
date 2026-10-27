@@ -11,12 +11,16 @@ import {
   Loader2,
   CheckCircle2,
   ArrowLeft,
+  KeyRound,
+  ShieldCheck,
+  Building2,
   Info,
 } from 'lucide-react';
 import { useAuth } from '../../presentation/context/AuthContext';
 import { useToast } from '../../presentation/context/ToastContext';
 import { UserRole, UserProfile } from '../../domain/entities/UserProfile';
 import { getUserRepository, getNotificationRepository } from '../../infrastructure/repositories';
+import { Card, CardHeader, CardTitle, CardDescription, CardContent, CardFooter } from '../../presentation/components/ui/card';
 import { Button } from '../../presentation/components/ui/button';
 import { Input } from '../../presentation/components/ui/input';
 import { Alert, AlertTitle, AlertDescription } from '../../presentation/components/ui/alert';
@@ -92,7 +96,7 @@ const OFFICIAL_ACCOUNTS: RegisteredAccount[] = [
 function LoginFormContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { allUsers, login } = useAuth();
+  const { login } = useAuth();
   const { toast } = useToast();
 
   // Mode: 'login' | 'forgot'
@@ -142,18 +146,18 @@ function LoginFormContent() {
     setIsSubmitting(true);
 
     try {
-      // 1. Fetch live users from repository (Supabase or Mock) to support newly created users
+      // 1. Ambil data pengguna realtime dari repository (Supabase atau Mock)
       const userRepo = getUserRepository();
       const liveUsers = await userRepo.getAllUsers();
 
-      // Find in live database users
+      // Cek pada data database
       const dbMatch = liveUsers.find(
         (u) =>
           u.email.toLowerCase() === inputEmail ||
           (u.phoneNumber && u.phoneNumber === inputEmail)
       );
 
-      // Find in hardcoded OFFICIAL_ACCOUNTS (for aliases / backwards compatibility)
+      // Cek pada daftar akun resmi (dukungan aliases)
       const officialMatch = OFFICIAL_ACCOUNTS.find(
         (acc) =>
           acc.email.toLowerCase() === inputEmail ||
@@ -171,7 +175,7 @@ function LoginFormContent() {
         return;
       }
 
-      // Check account status if from database
+      // Cek status aktif akun
       if (dbMatch && !dbMatch.isActive) {
         setErrorMessage('Akun kedinasan Anda berstatus non-aktif. Silakan hubungi Administrator Kominfotik.');
         toast({
@@ -183,8 +187,7 @@ function LoginFormContent() {
         return;
       }
 
-      // 2. Validate Password:
-      // Uses getUserPassword (checks localStorage or defaults to 'walikota2026' or official account password)
+      // 2. Validasi Kata Sandi
       const targetEmail = dbMatch ? dbMatch.email : officialMatch!.email;
       const expectedPassword = getUserPassword(targetEmail);
       const officialPassword = officialMatch?.password || 'walikota2026';
@@ -193,7 +196,7 @@ function LoginFormContent() {
         inputPass === expectedPassword || inputPass === officialPassword;
 
       if (!isPasswordCorrect) {
-        setErrorMessage('Kata sandi yang Anda masukkan salah. Silakan coba lagi.');
+        setErrorMessage('Kata sandi yang Anda masukkan salah. Silakan periksa kembali.');
         toast({
           title: 'Gagal Masuk',
           description: 'Kombinasi email dan kata sandi tidak valid. Akses ditolak.',
@@ -203,7 +206,7 @@ function LoginFormContent() {
         return;
       }
 
-      // 3. Otentikasi Berhasil: Konstruksi profile pengguna
+      // 3. Otentikasi Berhasil
       const activeUser: UserProfile = dbMatch || {
         id: officialMatch!.id,
         fullName: officialMatch!.fullName,
@@ -215,7 +218,6 @@ function LoginFormContent() {
         createdAt: new Date().toISOString(),
       };
 
-      // Simpan session
       login(activeUser);
 
       toast({
@@ -224,7 +226,6 @@ function LoginFormContent() {
         variant: 'success',
       });
 
-      // Tentukan rute default berdasarkan role
       const defaultRoute =
         activeUser.role === 'admin'
           ? '/dashboard'
@@ -255,7 +256,7 @@ function LoginFormContent() {
     if (!cleanForgotEmail) {
       toast({
         title: 'Email Diperlukan',
-        description: 'Silakan ketikkan alamat email instansi Anda.',
+        description: 'Silakan ketikkan alamat email kedinasan Anda.',
         variant: 'destructive',
       });
       return;
@@ -264,7 +265,7 @@ function LoginFormContent() {
     setIsForgotSubmitting(true);
 
     try {
-      // 1. Simpan permintaan reset sandi ke sistem
+      // 1. Simpan permohonan reset sandi ke sistem
       recordPasswordResetRequest(cleanForgotEmail);
 
       // 2. Buat notifikasi khusus role Admin
@@ -291,66 +292,67 @@ function LoginFormContent() {
   };
 
   return (
-    <div className="min-h-screen bg-slate-50/50 dark:bg-background flex items-center justify-center p-4 sm:p-6 lg:p-8 transition-colors">
-      {/* 2-COLUMN UNIFIED CARD (Matches mockup 100%) */}
-      <div className="w-full max-w-4xl bg-card border border-border/80 shadow-2xl rounded-2xl overflow-hidden flex flex-col md:flex-row transition-all">
-        {/* LEFT COLUMN: Modern Corridor Image with Sudin Kominfotik Branding */}
-        <div className="hidden md:flex md:w-1/2 relative bg-zinc-950 overflow-hidden min-h-[560px]">
+    <div className="min-h-screen bg-slate-50/60 dark:bg-zinc-950 flex flex-col items-center justify-center p-4 sm:p-6 transition-colors">
+      {/* Brand Header */}
+      <div className="w-full max-w-md text-center space-y-2.5 mb-6">
+        <div className="flex justify-center items-center">
           <img
-            src="/login-bg-hd.png"
-            alt="Sistem Manajemen Reservasi"
-            className="absolute inset-0 w-full h-full object-cover"
+            src="/logo-kominfotik.png"
+            alt="Logo Sudin Kominfotik Jakarta Timur"
+            className="h-14 w-auto object-contain dark:hidden"
+          />
+          <img
+            src="/logo-kominfotik-dark.png"
+            alt="Logo Sudin Kominfotik Jakarta Timur"
+            className="h-14 w-auto object-contain hidden dark:block"
           />
         </div>
+        <div>
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-foreground">
+            E-Reservasi Ruang Rapat
+          </h1>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Pemerintah Kota Administrasi Jakarta Timur &bull; Portal Resmi Kedinasan
+          </p>
+        </div>
+      </div>
 
-        {/* RIGHT COLUMN: Interactive Form Content */}
-        <div className="w-full md:w-1/2 bg-card p-6 sm:p-10 flex flex-col justify-between">
-          <div>
-            {/* Mobile Header Logo for smaller screens */}
-            <div className="md:hidden flex items-center gap-3 mb-6 pb-4 border-b border-border/60">
-              <img
-                src="/logo-kominfotik.png"
-                alt="Sudin Kominfotik"
-                className="h-10 w-auto object-contain dark:hidden"
-              />
-              <img
-                src="/logo-kominfotik-dark.png"
-                alt="Sudin Kominfotik"
-                className="h-10 w-auto object-contain hidden dark:block"
-              />
-              <div>
-                <div className="text-xs font-bold text-foreground">Sudin Kominfotik</div>
-                <div className="text-[10px] text-muted-foreground">Jakarta Timur</div>
-              </div>
-            </div>
-
-            {view === 'login' ? (
-              /* LOGIN VIEW */
-              <div>
-                <div className="mb-6">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                    Selamat Datang
-                  </h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Silakan masuk ke dashboard internal.
-                  </p>
+      {/* SHADCN UI SIMPLE CARD */}
+      <Card className="w-full max-w-md border border-border/80 shadow-lg rounded-xl overflow-hidden bg-card">
+        {view === 'login' ? (
+          /* TAMPILAN LOGIN SHADCN */
+          <>
+            <CardHeader className="p-6 pb-4 border-b border-border/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-bold">Masuk ke Akun Kedinasan</CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    Gunakan email dan kata sandi resmi untuk melanjutkan.
+                  </CardDescription>
                 </div>
+                <ShieldCheck className="w-5 h-5 text-emerald-600 dark:text-emerald-400" />
+              </div>
+            </CardHeader>
 
-                {/* Shadcn Alert for Error */}
-                {errorMessage && (
-                  <Alert variant="destructive" className="mb-5">
-                    <AlertTriangle className="w-4 h-4" />
-                    <AlertTitle>Gagal Masuk</AlertTitle>
-                    <AlertDescription>{errorMessage}</AlertDescription>
-                  </Alert>
-                )}
+            <CardContent className="p-6 pt-5 space-y-4">
+              {/* Shadcn Alert for Error */}
+              {errorMessage && (
+                <Alert variant="destructive">
+                  <AlertTriangle className="w-4 h-4" />
+                  <AlertTitle>Gagal Masuk</AlertTitle>
+                  <AlertDescription>{errorMessage}</AlertDescription>
+                </Alert>
+              )}
 
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
-                  {/* Email Instansi */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">
-                      Email Instansi<span className="text-rose-500 ml-0.5">*</span>
-                    </label>
+              <form onSubmit={handleLoginSubmit} className="space-y-4">
+                {/* Email Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground">Email Kedinasan</label>
+                    <span className="text-[10px] text-muted-foreground font-mono">@jakarta.go.id</span>
+                  </div>
+                  <div className="relative">
+                    <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                     <Input
                       type="email"
                       value={email}
@@ -359,56 +361,18 @@ function LoginFormContent() {
                         setEmail(e.target.value);
                         if (errorMessage) setErrorMessage(null);
                       }}
-                      placeholder="nama@jakarta.go.id"
-                      className="h-11 rounded-lg text-xs sm:text-sm border-blue-500/40 focus-visible:border-blue-600 focus-visible:ring-blue-500"
+                      placeholder="budi@jakarta.go.id"
+                      className="pl-9 text-xs sm:text-sm h-10 border-border/80 focus-visible:border-primary"
                       autoComplete="username"
                       required
                     />
                   </div>
+                </div>
 
-                  {/* Kata Sandi */}
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-foreground">
-                      Kata Sandi<span className="text-rose-500 ml-0.5">*</span>
-                    </label>
-                    <div className="relative">
-                      <Input
-                        type={showPassword ? 'text' : 'password'}
-                        value={password}
-                        disabled={isSubmitting}
-                        onChange={(e) => {
-                          setPassword(e.target.value);
-                          if (errorMessage) setErrorMessage(null);
-                        }}
-                        placeholder="••••••••"
-                        className="h-11 rounded-lg pr-10 text-xs sm:text-sm font-mono border-border/80 focus-visible:border-blue-600 focus-visible:ring-blue-500"
-                        autoComplete="current-password"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
-                        title={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
-                      >
-                        {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                      </button>
-                    </div>
-                  </div>
-
-                  {/* Ingat Saya & Lupa Sandi Row */}
-                  <div className="flex items-center justify-between text-xs pt-1">
-                    <label className="flex items-center gap-2 cursor-pointer select-none text-foreground">
-                      <input
-                        type="checkbox"
-                        checked={rememberMe}
-                        disabled={isSubmitting}
-                        onChange={(e) => setRememberMe(e.target.checked)}
-                        className="rounded border-input text-blue-600 focus:ring-blue-500 h-4 w-4"
-                      />
-                      <span className="text-xs text-muted-foreground">Ingat saya</span>
-                    </label>
-
+                {/* Password Input */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <label className="text-xs font-semibold text-foreground">Kata Sandi</label>
                     <button
                       type="button"
                       onClick={() => {
@@ -417,141 +381,186 @@ function LoginFormContent() {
                         setForgotEmail(email);
                         setForgotSuccess(false);
                       }}
-                      className="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline transition-colors"
+                      className="text-xs text-blue-600 dark:text-blue-400 hover:text-blue-700 hover:underline transition-colors"
                     >
                       Lupa Sandi?
                     </button>
                   </div>
-
-                  {/* Button Masuk Dashboard */}
-                  <Button
-                    type="submit"
-                    disabled={isSubmitting}
-                    className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-sm gap-2 mt-2 transition-all"
-                  >
-                    {isSubmitting ? (
-                      <>
-                        <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
-                        <span>Memverifikasi Akses Masuk...</span>
-                      </>
-                    ) : (
-                      <span>Masuk Dashboard</span>
-                    )}
-                  </Button>
-                </form>
-              </div>
-            ) : (
-              /* PEMULIHAN SANDI (LUPA SANDI) VIEW */
-              <div>
-                <div className="mb-5">
-                  <h2 className="text-2xl font-bold tracking-tight text-foreground">
-                    Pemulihan Sandi
-                  </h2>
-                  <p className="text-xs sm:text-sm text-muted-foreground mt-1">
-                    Masukkan email instansi untuk menerima tautan reset.
-                  </p>
+                  <div className="relative">
+                    <Lock className="w-4 h-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
+                    <Input
+                      type={showPassword ? 'text' : 'password'}
+                      value={password}
+                      disabled={isSubmitting}
+                      onChange={(e) => {
+                        setPassword(e.target.value);
+                        if (errorMessage) setErrorMessage(null);
+                      }}
+                      placeholder="Masukkan kata sandi akun"
+                      className="pl-9 pr-10 text-xs sm:text-sm h-10 font-mono border-border/80 focus-visible:border-primary"
+                      autoComplete="current-password"
+                      required
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowPassword(!showPassword)}
+                      className="absolute right-3 top-3 text-muted-foreground hover:text-foreground transition-colors"
+                      title={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
+                    >
+                      {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
                 </div>
 
-                {/* Shadcn Alert: Info Banner */}
-                <Alert
-                  variant="info"
-                  className="mb-5 bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-300"
+                {/* Ingat Saya */}
+                <div className="flex items-center justify-between text-xs pt-0.5">
+                  <label className="flex items-center gap-2 cursor-pointer select-none text-foreground">
+                    <input
+                      type="checkbox"
+                      checked={rememberMe}
+                      disabled={isSubmitting}
+                      onChange={(e) => setRememberMe(e.target.checked)}
+                      className="rounded border-input text-primary focus:ring-ring h-4 w-4"
+                    />
+                    <span className="text-xs text-muted-foreground">Ingat sesi di perangkat ini</span>
+                  </label>
+                </div>
+
+                {/* Tombol Submit */}
+                <Button
+                  type="submit"
+                  disabled={isSubmitting}
+                  className="w-full h-10 text-xs sm:text-sm font-semibold gap-2 mt-2 shadow-xs transition-all"
                 >
-                  <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
-                  <AlertDescription className="text-xs leading-relaxed">
-                    Permintaan reset sandi akan diteruskan langsung ke Administrator Sudin Kominfotik untuk verifikasi keamanan dan penerbitan sandi baru akun kedinasan Anda.
-                  </AlertDescription>
-                </Alert>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="w-4 h-4 animate-spin text-primary-foreground shrink-0" />
+                      <span>Memverifikasi Akses Masuk...</span>
+                    </>
+                  ) : (
+                    <span>Masuk ke Dashboard</span>
+                  )}
+                </Button>
+              </form>
+            </CardContent>
+          </>
+        ) : (
+          /* TAMPILAN PEMULIHAN SANDI (LUPA SANDI) SHADCN */
+          <>
+            <CardHeader className="p-6 pb-4 border-b border-border/60">
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle className="text-lg font-bold">Pemulihan Kata Sandi</CardTitle>
+                  <CardDescription className="text-xs mt-0.5">
+                    Ajukan permintaan pemulihan kata sandi akun kedinasan.
+                  </CardDescription>
+                </div>
+                <KeyRound className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+              </div>
+            </CardHeader>
 
-                {forgotSuccess ? (
-                  <div className="space-y-4 pt-2">
-                    <Alert variant="success">
-                      <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                      <AlertTitle>Permintaan Diterima</AlertTitle>
-                      <AlertDescription>
-                        Permintaan reset kata sandi untuk <span className="font-mono font-bold">{forgotEmail}</span> telah dikirim ke Administrator. Admin akan mereset dan mengabari Anda.
-                      </AlertDescription>
-                    </Alert>
+            <CardContent className="p-6 pt-5 space-y-4">
+              {/* Shadcn Alert Informasi Sesuai Arahan Pengguna */}
+              <Alert
+                variant="info"
+                className="bg-blue-50/80 dark:bg-blue-950/40 border-blue-200 dark:border-blue-900 text-blue-900 dark:text-blue-300"
+              >
+                <Info className="w-4 h-4 text-blue-600 dark:text-blue-400" />
+                <AlertDescription className="text-xs leading-relaxed">
+                  Permintaan reset sandi akan diteruskan langsung ke Administrator Sudin Kominfotik untuk verifikasi keamanan dan penerbitan sandi baru akun kedinasan Anda.
+                </AlertDescription>
+              </Alert>
 
-                    <Button
-                      type="button"
-                      variant="outline"
-                      className="w-full h-10 text-xs font-semibold"
-                      onClick={() => {
-                        setView('login');
-                        setForgotSuccess(false);
-                      }}
-                    >
-                      ← Kembali ke Halaman Login
-                    </Button>
-                  </div>
-                ) : (
-                  <form onSubmit={handleSendResetPassword} className="space-y-4">
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-foreground">
-                        Email Instansi / Terdaftar<span className="text-rose-500 ml-0.5">*</span>
-                      </label>
+              {forgotSuccess ? (
+                <div className="space-y-4 pt-1">
+                  <Alert variant="success">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
+                    <AlertTitle>Permintaan Diterima</AlertTitle>
+                    <AlertDescription>
+                      Permintaan reset kata sandi untuk <span className="font-mono font-bold">{forgotEmail}</span> telah dikirim ke Administrator. Admin akan mereset dan mengabari Anda.
+                    </AlertDescription>
+                  </Alert>
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    className="w-full h-10 text-xs font-semibold gap-1.5"
+                    onClick={() => {
+                      setView('login');
+                      setForgotSuccess(false);
+                    }}
+                  >
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    Kembali ke Halaman Login
+                  </Button>
+                </div>
+              ) : (
+                <form onSubmit={handleSendResetPassword} className="space-y-4">
+                  <div className="space-y-1.5">
+                    <label className="text-xs font-semibold text-foreground">
+                      Email Instansi / Terdaftar
+                    </label>
+                    <div className="relative">
+                      <Mail className="w-4 h-4 text-muted-foreground absolute left-3 top-3 pointer-events-none" />
                       <Input
                         type="email"
                         value={forgotEmail}
                         disabled={isForgotSubmitting}
                         onChange={(e) => setForgotEmail(e.target.value)}
                         placeholder="nama@jakarta.go.id"
-                        className="h-11 rounded-lg text-xs sm:text-sm border-blue-500/40 focus-visible:border-blue-600 focus-visible:ring-blue-500"
+                        className="pl-9 text-xs sm:text-sm h-10 border-border/80 focus-visible:border-primary"
                         required
                       />
                     </div>
+                  </div>
 
-                    <Button
-                      type="submit"
-                      disabled={isForgotSubmitting}
-                      className="w-full h-11 bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs sm:text-sm rounded-lg shadow-sm gap-2 mt-2 transition-all"
+                  <Button
+                    type="submit"
+                    disabled={isForgotSubmitting}
+                    className="w-full h-10 text-xs sm:text-sm font-semibold gap-2 mt-2 shadow-xs transition-all"
+                  >
+                    {isForgotSubmitting ? (
+                      <>
+                        <Loader2 className="w-4 h-4 animate-spin text-primary-foreground shrink-0" />
+                        <span>Meneruskan Permintaan...</span>
+                      </>
+                    ) : (
+                      <span>Kirim Permintaan Reset</span>
+                    )}
+                  </Button>
+
+                  <div className="pt-2 text-center">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setView('login');
+                        setErrorMessage(null);
+                      }}
+                      className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
                     >
-                      {isForgotSubmitting ? (
-                        <>
-                          <Loader2 className="w-4 h-4 animate-spin text-white shrink-0" />
-                          <span>Meneruskan Permintaan...</span>
-                        </>
-                      ) : (
-                        <span>Kirim Permintaan Reset</span>
-                      )}
-                    </Button>
+                      <ArrowLeft className="w-3.5 h-3.5" />
+                      Kembali ke Halaman Login
+                    </button>
+                  </div>
+                </form>
+              )}
+            </CardContent>
+          </>
+        )}
 
-                    <div className="pt-2 text-center">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setView('login');
-                          setErrorMessage(null);
-                        }}
-                        className="inline-flex items-center gap-1.5 text-xs font-medium text-muted-foreground hover:text-foreground transition-colors"
-                      >
-                        <ArrowLeft className="w-3.5 h-3.5" />
-                        Kembali ke Halaman Login
-                      </button>
-                    </div>
-                  </form>
-                )}
-              </div>
-            )}
-          </div>
-
-          {/* Unified Footer Copyright */}
-          <div className="mt-8 pt-6 border-t border-border/40 text-center">
-            <p className="text-[11px] text-muted-foreground leading-relaxed">
-              &copy; 2026 Suku Dinas Kominfotik<br />
-              Kota Administrasi Jakarta Timur.
-            </p>
-          </div>
-        </div>
-      </div>
+        <CardFooter className="p-4 border-t border-border/60 bg-muted/20 flex justify-center text-center">
+          <p className="text-[11px] text-muted-foreground">
+            &copy; 2026 Suku Dinas Kominfotik &bull; Kota Administrasi Jakarta Timur
+          </p>
+        </CardFooter>
+      </Card>
     </div>
   );
 }
 
 export default function LoginPage() {
   return (
-    <React.Suspense fallback={<div className="min-h-screen bg-slate-50/50 dark:bg-background" />}>
+    <React.Suspense fallback={<div className="min-h-screen bg-slate-50/60 dark:bg-zinc-950" />}>
       <LoginFormContent />
     </React.Suspense>
   );

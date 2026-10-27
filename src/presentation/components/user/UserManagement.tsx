@@ -13,6 +13,7 @@ import {
   ShieldAlert,
   Save,
   Check,
+  Loader2,
 } from 'lucide-react';
 import { UserProfile, UserRole, UserType } from '../../../domain/entities/UserProfile';
 import { useAuth } from '../../context/AuthContext';
@@ -62,6 +63,10 @@ export const UserManagement: React.FC = () => {
   const [resetTargetUser, setResetTargetUser] = useState<UserProfile | null>(null);
   const [newPasswordInput, setNewPasswordInput] = useState('walikota2026');
   const [pendingResets, setPendingResets] = useState<PasswordResetRequest[]>([]);
+
+  // Delete user confirmation dialog state (Shadcn UI Confirmation Modal)
+  const [userToDelete, setUserToDelete] = useState<UserProfile | null>(null);
+  const [isDeletingUser, setIsDeletingUser] = useState(false);
 
   const userRepo = getUserRepository();
 
@@ -137,15 +142,26 @@ export const UserManagement: React.FC = () => {
     setIsModalOpen(false);
   };
 
-  const handleDeleteUser = async (id: string) => {
-    if (confirm('Hapus pengguna ini dari sistem?')) {
-      await userRepo.deleteUser(id);
+  const handleConfirmDelete = async () => {
+    if (!userToDelete) return;
+    setIsDeletingUser(true);
+    try {
+      await userRepo.deleteUser(userToDelete.id);
       await refreshUsers();
       toast({
-        title: 'Pengguna Dihapus',
-        description: 'Akun pegawai telah dihapus dari sistem.',
+        title: 'Pengguna Berhasil Dihapus',
+        description: `Akun pegawai ${userToDelete.fullName} (${userToDelete.email}) telah dihapus dari sistem.`,
         variant: 'destructive',
       });
+    } catch (err: any) {
+      toast({
+        title: 'Gagal Menghapus Pengguna',
+        description: err?.message || 'Terjadi kesalahan sistem.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeletingUser(false);
+      setUserToDelete(null);
     }
   };
 
@@ -377,8 +393,8 @@ export const UserManagement: React.FC = () => {
                     <Button
                       variant="ghost"
                       size="iconSm"
-                      onClick={() => handleDeleteUser(user.id)}
-                      title="Hapus"
+                      onClick={() => setUserToDelete(user)}
+                      title="Hapus Pengguna"
                       className="hover:text-destructive"
                     >
                       <Trash2 className="w-3.5 h-3.5" />
@@ -531,6 +547,63 @@ export const UserManagement: React.FC = () => {
               </Button>
             </div>
           </form>
+        )}
+      </Dialog>
+
+      {/* SHADCN CONFIRMATION MODAL DELETE USER */}
+      <Dialog
+        isOpen={!!userToDelete}
+        onClose={() => {
+          if (!isDeletingUser) setUserToDelete(null);
+        }}
+        title="Konfirmasi Hapus Pengguna"
+        description="Tindakan ini permanen dan akan menghapus akun pegawai dari sistem."
+      >
+        {userToDelete && (
+          <div className="space-y-4 text-xs">
+            <div className="p-3.5 rounded-lg bg-rose-50/50 dark:bg-rose-950/20 border border-rose-200 dark:border-rose-900/60 space-y-1">
+              <div className="font-semibold text-rose-800 dark:text-rose-300">
+                {userToDelete.fullName}
+              </div>
+              <div className="text-muted-foreground font-mono">
+                {userToDelete.email}
+              </div>
+              <div className="text-muted-foreground">
+                {userToDelete.unitName} &bull; <span className="font-semibold text-foreground">{userToDelete.role}</span>
+              </div>
+            </div>
+
+            <p className="text-muted-foreground leading-relaxed">
+              Apakah Anda yakin ingin menghapus akun pegawai ini dari sistem E-Reservasi Walikota Jakarta Timur?
+            </p>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setUserToDelete(null)}
+                disabled={isDeletingUser}
+              >
+                Batal
+              </Button>
+              <Button
+                type="button"
+                variant="destructive"
+                size="sm"
+                onClick={handleConfirmDelete}
+                disabled={isDeletingUser}
+                className="gap-1.5"
+              >
+                {isDeletingUser ? (
+                  <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                ) : (
+                  <Trash2 className="w-3.5 h-3.5" />
+                )}
+                {isDeletingUser ? 'Menghapus...' : 'Ya, Hapus Pengguna'}
+              </Button>
+            </div>
+          </div>
         )}
       </Dialog>
     </div>
