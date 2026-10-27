@@ -67,6 +67,7 @@ export class MockNotificationRepository implements INotificationRepository {
     return this.getNotifs().filter((n) => {
       if (n.recipientId === userId || n.recipientId === 'all') return true;
       if (userRole === 'admin' && n.recipientId === 'admin') return true;
+      if ((userRole === 'verifikator_pimpinan' || userRole === 'verifikator_asisten' || userRole === 'admin') && (n.recipientId === 'verifikator' || n.recipientId === userRole)) return true;
       return false;
     });
   }

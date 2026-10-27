@@ -152,7 +152,7 @@ export const ApprovalDashboard: React.FC = () => {
         accompanyingOfficial: editAccompanying,
         dressCode: editDressCode,
       };
-      notifyMsg = `Pimpinan (${currentUser?.fullName || 'Pimpinan'}) telah memperbarui detail agenda "${editEventName}".`;
+      notifyMsg = `Pimpinan (${currentUser?.fullName || 'Pimpinan'}) telah memperbarui detail agenda "${editEventName}" (${editStartTime} - ${editEndTime}).`;
     }
 
     await updateReservation(editingItem.id, updateData, notifyMsg);

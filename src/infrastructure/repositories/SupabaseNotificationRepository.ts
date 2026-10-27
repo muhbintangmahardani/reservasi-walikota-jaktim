@@ -11,15 +11,17 @@ export class SupabaseNotificationRepository implements INotificationRepository {
   private supabase = createClient();
 
   async getNotificationsByUserId(userId: string, userRole?: string): Promise<NotificationItem[]> {
-    const recipients = [userId, 'all'];
-    if (userRole === 'admin') {
-      recipients.push('admin');
+    const isUuid = (str: string) =>
+      /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(str);
+
+    if (!isUuid(userId)) {
+      return [];
     }
 
     const { data, error } = await this.supabase
       .from('notifications')
       .select('*')
-      .in('recipient_id', recipients)
+      .eq('recipient_id', userId)
       .order('created_at', { ascending: false });
 
     if (error) throw error;

@@ -10,6 +10,7 @@ import {
   getNotificationRepository,
   getPicContactRepository,
   getCategoryRepository,
+  getUserRepository,
 } from '../../infrastructure/repositories';
 import { isSupabaseConfigured, createClient } from '../../infrastructure/supabase/client';
 import { useAuth } from './AuthContext';
@@ -59,6 +60,40 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
   const isBackendConnected = isSupabaseConfigured();
 
   const isInitialLoadRef = React.useRef(true);
+  const realtimeChannelRef = React.useRef<any>(null);
+  const localBcRef = React.useRef<BroadcastChannel | null>(null);
+
+  // Broadcast sync helper: memancarkan sinyal ke seluruh tab dan browser lain secara realtime
+  const broadcastSync = useCallback((action: string) => {
+    // 1. Supabase WebSocket Broadcast (lintas browser, device, incognito)
+    if (realtimeChannelRef.current) {
+      try {
+        realtimeChannelRef.current.send({
+          type: 'broadcast',
+          event: 'system_sync',
+          payload: { action, timestamp: Date.now() },
+        });
+      } catch (err) {
+        console.warn('Supabase broadcast send error:', err);
+      }
+    }
+
+    // 2. Standard Web BroadcastChannel (lintas tab/window pada browser yang sama)
+    if (typeof window !== 'undefined' && localBcRef.current) {
+      try {
+        localBcRef.current.postMessage({ action, timestamp: Date.now() });
+      } catch (err) {
+        console.warn('Local BroadcastChannel error:', err);
+      }
+    }
+
+    // 3. LocalStorage event trigger (fallback lintas tab)
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('e_reservasi_cross_tab_sync', String(Date.now()));
+      } catch {}
+    }
+  }, []);
 
   const loadData = useCallback(async (isSilent = false) => {
     if (!isSilent && isInitialLoadRef.current) {
@@ -70,7 +105,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         roomRepo.getAllRooms(),
         categoryRepo.getAllCategories(),
         picContactRepo.getAllPicContacts(),
-        currentUser ? notificationRepo.getNotificationsByUserId(currentUser.id, currentUser.role) : Promise.resolve([]),
+        currentUser?.id ? notificationRepo.getNotificationsByUserId(currentUser.id, currentUser.role) : Promise.resolve([]),
       ]);
       
       // Settling delay hanya pada render pertama kali untuk animasi skeleton yang halus
@@ -95,43 +130,94 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     loadData();
   }, [loadData]);
 
-  // Supabase Realtime Listener (Auto update upon changes across all tabs/devices tanpa flicker)
+  // Listener Multi-Browser & Multi-Tab Realtime Sync
   useEffect(() => {
-    if (!isSupabaseConfigured()) return;
-
-    try {
-      const supabase = createClient();
-      const channel = supabase
-        .channel('realtime_e_reservasi')
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'reservations' },
-          () => {
-            loadData(true);
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'notifications' },
-          () => {
-            loadData(true);
-          }
-        )
-        .on(
-          'postgres_changes',
-          { event: '*', schema: 'public', table: 'rooms' },
-          () => {
-            loadData(true);
-          }
-        )
-        .subscribe();
-
-      return () => {
-        supabase.removeChannel(channel);
-      };
-    } catch (err) {
-      console.error('Supabase Realtime subscription error:', err);
+    // 1. Web BroadcastChannel untuk tab lokal
+    if (typeof window !== 'undefined' && 'BroadcastChannel' in window) {
+      try {
+        const bc = new BroadcastChannel('e_reservasi_sync');
+        localBcRef.current = bc;
+        bc.onmessage = () => {
+          loadData(true);
+        };
+      } catch (e) {
+        console.warn('BroadcastChannel initialization error:', e);
+      }
     }
+
+    // 2. LocalStorage storage event fallback
+    const handleStorage = (e: StorageEvent) => {
+      if (e.key === 'e_reservasi_cross_tab_sync') {
+        loadData(true);
+      }
+    };
+    if (typeof window !== 'undefined') {
+      window.addEventListener('storage', handleStorage);
+    }
+
+    // 3. Supabase Realtime WebSocket (Broadcast + Postgres Changes)
+    let channel: any = null;
+    let supabaseClient: any = null;
+
+    if (isSupabaseConfigured()) {
+      try {
+        supabaseClient = createClient();
+        channel = supabaseClient.channel('realtime_e_reservasi', {
+          config: { broadcast: { self: false } },
+        });
+
+        realtimeChannelRef.current = channel;
+
+        channel
+          .on('broadcast', { event: 'system_sync' }, () => {
+            loadData(true);
+          })
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'reservations' },
+            () => {
+              loadData(true);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'notifications' },
+            () => {
+              loadData(true);
+            }
+          )
+          .on(
+            'postgres_changes',
+            { event: '*', schema: 'public', table: 'rooms' },
+            () => {
+              loadData(true);
+            }
+          )
+          .subscribe();
+      } catch (err) {
+        console.error('Supabase Realtime subscription error:', err);
+      }
+    }
+
+    // 4. Smart Silent Polling (Setiap 4 detik sinkronisasi di latar belakang saat tab aktif)
+    const pollInterval = setInterval(() => {
+      if (typeof document !== 'undefined' && !document.hidden) {
+        loadData(true);
+      }
+    }, 4000);
+
+    return () => {
+      clearInterval(pollInterval);
+      if (typeof window !== 'undefined') {
+        window.removeEventListener('storage', handleStorage);
+      }
+      if (localBcRef.current) {
+        localBcRef.current.close();
+      }
+      if (channel && supabaseClient) {
+        supabaseClient.removeChannel(channel);
+      }
+    };
   }, [loadData]);
 
   const fetchReservations = async (filter?: ReservationFilter) => {
@@ -145,23 +231,53 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     // Injeksi state seketika secara realtime untuk kalender, riwayat saya, meja verifikasi & jadwal pimpinan
     setReservations((prev) => [res, ...prev.filter((r) => r.id !== res.id)]);
 
-    if (currentUser) {
+    // 1. Notifikasi untuk akun pemohon (User)
+    if (currentUser?.id) {
       try {
         const notif = await notificationRepo.createNotification({
           recipientId: currentUser.id,
           reservationId: res.id,
-          title: 'Pengajuan Reservasi Berhasil',
-          message: `Pengajuan ruangan "${res.roomName}" untuk acara "${res.eventName}" sedang menunggu verifikasi Sekpim.`,
+          title: 'Pengajuan Reservasi Terkirim',
+          message: `Pengajuan ruangan "${res.roomName}" untuk acara "${res.eventName}" berhasil dikirim dan sedang menunggu verifikasi Sekpim.`,
           type: 'info',
         });
-        if (notif) {
+        if (notif && notif.recipientId === currentUser.id) {
           setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
         }
       } catch (e) {
-        console.warn('Could not insert notification to DB:', e);
+        console.warn('Could not insert user notification to DB:', e);
       }
     }
+
+    // 2. Notifikasi untuk para Verifikator & Admin (Walikota, Aspem, Admin)
+    try {
+      const userRepo = getUserRepository();
+      const allUsers = await userRepo.getAllUsers();
+      const verifiers = allUsers.filter(
+        (u) =>
+          u.isActive &&
+          (u.role === 'verifikator_pimpinan' ||
+           u.role === 'verifikator_asisten' ||
+           u.role === 'admin') &&
+          u.id !== currentUser?.id
+      );
+
+      for (const verifier of verifiers) {
+        await notificationRepo.createNotification({
+          recipientId: verifier.id,
+          reservationId: res.id,
+          title: 'Permohonan Reservasi Baru',
+          message: `"${res.userName}" (${res.letterOrigin || 'OPD'}) mengajukan reservasi "${res.roomName}" untuk acara "${res.eventName}" pada tanggal ${res.eventDate}. Menunggu verifikasi.`,
+          type: 'warning',
+        });
+      }
+    } catch (e) {
+      console.warn('Could not insert verifier notification:', e);
+    }
     
+    // Siarkan sinyal realtime ke seluruh tab & browser lain
+    broadcastSync('RESERVATION_CREATED');
+
     // Sinkronisasi data di background tanpa skeleton shimmer
     loadData(true);
     return res;
@@ -179,31 +295,35 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       prev.map((r) => (r.id === updated.id ? updated : r))
     );
     
-    // Kirim notifikasi perubahan jika diubah oleh asisten/pimpinan ke pemohon
-    if (notifyMessage) {
-      try {
-        const notif = await notificationRepo.createNotification({
-          recipientId: updated.userId,
-          reservationId: updated.id,
-          title: 'Perubahan Data Reservasi',
-          message: notifyMessage,
-          type: 'warning',
-        });
-        if (notif) {
-          setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
-        }
-      } catch (e) {
-        console.warn('Could not insert notification to DB:', e);
+    // Kirim notifikasi perubahan jadwal ke pemohon (bukan ke verifikator)
+    const finalMsg =
+      notifyMessage ||
+      `Detail jadwal reservasi "${updated.eventName}" (${updated.roomName}) telah disesuaikan oleh ${currentUser?.fullName || 'Pimpinan/Verifikator'}. Silakan periksa riwayat reservasi Anda.`;
+
+    try {
+      const notif = await notificationRepo.createNotification({
+        recipientId: updated.userId,
+        reservationId: updated.id,
+        title: 'Jadwal Reservasi Diperbarui',
+        message: finalMsg,
+        type: 'warning',
+      });
+      // Hanya masukkan ke notif lokal jika user yang login adalah si pemohon
+      if (notif && currentUser?.id === updated.userId) {
+        setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
       }
+    } catch (e) {
+      console.warn('Could not insert notification to DB:', e);
     }
 
+    broadcastSync('RESERVATION_UPDATED');
     loadData(true);
     return updated;
   };
 
   const approveReservation = async (id: string, categoryId: string, categoryName: string) => {
     const nowWib = getWIBISOString();
-    // 1. Optimistic instant UI update: seketika berpindah dari tab 'menunggu' ke 'disetujui' di meja verifikasi
+    // 1. Optimistic instant UI update di browser verifikator
     setReservations((prev) =>
       prev.map((r) =>
         r.id === id
@@ -228,26 +348,29 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       currentUser?.fullName || 'Pimpinan'
     );
 
-    // Sinkronkan dengan objek resmi kembalian database
     setReservations((prev) =>
       prev.map((r) => (r.id === updated.id ? updated : r))
     );
 
-    // Notifikasi internal ke user pemohon
+    // 2. Notifikasi HANYA dikirim ke USER PEMOHON (Budi), BUKAN ke verifikator!
     try {
       const notif = await notificationRepo.createNotification({
         recipientId: updated.userId,
         reservationId: updated.id,
         title: 'Reservasi Disetujui!',
-        message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" telah diverifikasi dan disetujui. Jadwal resmi telah diblock di kalender.`,
+        message: `Pengajuan ruangan "${updated.roomName}" untuk acara "${updated.eventName}" telah diverifikasi dan disetujui oleh ${currentUser?.fullName || 'Pimpinan'}. Jadwal resmi telah diblock di kalender.`,
         type: 'success',
       });
-      if (notif) {
+      // PENTING: Hanya masukkan ke notif lokal jika akun yang sedang login adalah si pemohon!
+      if (notif && currentUser?.id === updated.userId) {
         setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
       }
     } catch (e) {
-      console.warn('Could not insert notification to DB:', e);
+      console.warn('Could not insert notification:', e);
     }
+
+    // 3. Siarkan sinyal realtime ke seluruh browser (agar browser user langsung terupdate seketika)
+    broadcastSync('RESERVATION_APPROVED');
 
     loadData(true);
     return updated;
@@ -255,7 +378,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const rejectReservation = async (id: string, reason: string) => {
     const nowWib = getWIBISOString();
-    // 1. Optimistic instant UI update: seketika berpindah ke tab 'ditolak'
+    // 1. Optimistic instant UI update di browser verifikator
     setReservations((prev) =>
       prev.map((r) =>
         r.id === id
@@ -282,21 +405,25 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       prev.map((r) => (r.id === updated.id ? updated : r))
     );
 
-    // Notifikasi internal ke user pemohon
+    // 2. Notifikasi HANYA dikirim ke USER PEMOHON, BUKAN ke verifikator!
     try {
       const notif = await notificationRepo.createNotification({
         recipientId: updated.userId,
         reservationId: updated.id,
         title: 'Reservasi Ditolak',
-        message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" ditolak. Alasan: ${reason}`,
+        message: `Pengajuan ruangan "${updated.roomName}" untuk acara "${updated.eventName}" ditolak oleh ${currentUser?.fullName || 'Pimpinan'}. Alasan: ${reason}`,
         type: 'error',
       });
-      if (notif) {
+      // PENTING: Hanya masukkan ke notif lokal jika akun yang sedang login adalah si pemohon!
+      if (notif && currentUser?.id === updated.userId) {
         setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
       }
     } catch (e) {
-      console.warn('Could not insert notification to DB:', e);
+      console.warn('Could not insert notification:', e);
     }
+
+    // 3. Siarkan sinyal realtime ke seluruh browser
+    broadcastSync('RESERVATION_REJECTED');
 
     loadData(true);
     return updated;
@@ -306,6 +433,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setReservations((prev) => prev.filter((r) => r.id !== id));
     const success = await reservationRepo.deleteReservation(id);
     if (success) {
+      broadcastSync('RESERVATION_DELETED');
       loadData(true);
     }
     return success;
@@ -321,6 +449,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       setRooms((prev) =>
         prev.map((r) => (r.id === id ? { ...r, isActive: updated.isActive } : r))
       );
+      broadcastSync('ROOM_STATUS_TOGGLED');
     } catch (err) {
       // Revert jika gagal
       setRooms((prev) =>
