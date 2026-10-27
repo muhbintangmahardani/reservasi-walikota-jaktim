@@ -119,6 +119,7 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     if (path === '/jadwal-pimpinan') return 'Jadwal Pimpinan';
     if (path === '/reservasi/baru') return 'Formulir Reservasi Baru';
     if (path === '/reservasi/riwayat') return 'Riwayat Pengajuan';
+    if (path.startsWith('/reservasi/edit')) return 'Kelola & Edit Jadwal';
     if (path === '/verifikasi') return 'Meja Verifikasi Sekpim';
     if (path === '/verifikasi/jadwal-pimpinan') return 'Jadwal Pimpinan';
     if (path === '/ruangan') return 'Data Ruang Rapat';
@@ -181,8 +182,20 @@ export const AppLayout: React.FC<{ children: React.ReactNode }> = ({ children })
     currentUser?.role === 'admin';
   const isAdmin = currentUser?.role === 'admin';
 
-  // Breadcrumbs generator: langsung dari Home ke halaman tujuan (tanpa kategori dummy)
+  // Breadcrumbs generator: terstruktur rapi untuk sub-halaman
   const getBreadcrumbs = (): BreadcrumbItem[] => {
+    if (pathname.startsWith('/reservasi/edit')) {
+      return [
+        { label: 'Jadwal Pimpinan', href: '/jadwal-pimpinan' },
+        { label: 'Kelola & Edit Jadwal', isCurrent: true },
+      ];
+    }
+    if (pathname.startsWith('/pengaturan/users')) {
+      return [
+        { label: 'Pengaturan Akun', href: '/pengaturan' },
+        { label: 'Manajemen Pengguna', isCurrent: true },
+      ];
+    }
     return [{ label: getPageTitle(pathname), isCurrent: true }];
   };
 

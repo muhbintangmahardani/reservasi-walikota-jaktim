@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   CheckCircle,
   XCircle,
@@ -20,7 +21,6 @@ import { Reservation } from '../../../domain/entities/Reservation';
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { useToast } from '../../context/ToastContext';
-import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -30,6 +30,7 @@ import { Skeleton } from '../ui/skeleton';
 import { cn } from '@/lib/utils';
 
 export const ApprovalDashboard: React.FC = () => {
+  const router = useRouter();
   const { reservations, categories, approveReservation, rejectReservation, updateReservation, isLoading } = useReservations();
   const { currentUser } = useAuth();
   const { toast } = useToast();
@@ -44,9 +45,6 @@ export const ApprovalDashboard: React.FC = () => {
   const [rejectingItem, setRejectingItem] = useState<Reservation | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [isProcessing, setIsProcessing] = useState(false);
-
-  // Edit schedule state (menggunakan modal kelola jadwal komprehensif)
-  const [editingSchedule, setEditingSchedule] = useState<Reservation | null>(null);
 
   const isAsisten = currentUser?.role === 'verifikator_asisten';
 
@@ -280,7 +278,7 @@ export const ApprovalDashboard: React.FC = () => {
                   <Button
                     variant="outline"
                     size="sm"
-                    onClick={() => setEditingSchedule(item)}
+                    onClick={() => router.push(`/reservasi/edit/${item.id}`)}
                   >
                     <Edit className="w-3.5 h-3.5 mr-1.5" />
                     Edit Jadwal
@@ -392,13 +390,6 @@ export const ApprovalDashboard: React.FC = () => {
           </div>
         )}
       </Dialog>
-
-      {/* MODAL 3: KELOLA & EDIT JADWAL TERPADU (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
-      <EditScheduleDialog
-        isOpen={!!editingSchedule}
-        onClose={() => setEditingSchedule(null)}
-        reservation={editingSchedule}
-      />
     </div>
   );
 };

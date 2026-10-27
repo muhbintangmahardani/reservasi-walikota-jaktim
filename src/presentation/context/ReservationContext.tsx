@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo } from 'react';
 import { Reservation, ReservationFilter } from '../../domain/entities/Reservation';
 import { Room } from '../../domain/entities/Room';
 import { NotificationItem, PicContact, Category } from '../../domain/entities/Category';
@@ -474,8 +474,8 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
   };
 
-  const activeRooms = rooms.filter((r) => r.isActive);
-  const unreadNotifsCount = notifications.filter((n) => !n.isRead).length;
+  const activeRooms = useMemo(() => rooms.filter((r) => r.isActive), [rooms]);
+  const unreadNotifsCount = useMemo(() => notifications.filter((n) => !n.isRead).length, [notifications]);
 
   return (
     <ReservationContext.Provider

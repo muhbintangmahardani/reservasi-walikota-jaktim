@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useMemo } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Calendar,
   Clock,
@@ -19,7 +20,6 @@ import {
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Reservation } from '../../../domain/entities/Reservation';
-import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
 import { Button } from '../ui/button';
@@ -47,6 +47,7 @@ const LEADERSHIP_ROLES: LeaderRoleConfig[] = [
 ];
 
 export const JadwalPimpinanView: React.FC = () => {
+  const router = useRouter();
   const { reservations, picContacts, isLoading } = useReservations();
   const { allUsers, currentUser } = useAuth();
 
@@ -60,7 +61,6 @@ export const JadwalPimpinanView: React.FC = () => {
   const [timeFilter, setTimeFilter] = useState<'all' | 'upcoming' | 'today' | 'week'>('all');
   const [statusFilter, setStatusFilter] = useState<'all' | 'disetujui' | 'menunggu'>('all');
   const [selectedAgenda, setSelectedAgenda] = useState<Reservation | null>(null);
-  const [editingSchedule, setEditingSchedule] = useState<Reservation | null>(null);
 
   // Filter all reservations that involve leadership (both approved and pending)
   const leadershipAgendas = useMemo(() => {
@@ -474,7 +474,7 @@ export const JadwalPimpinanView: React.FC = () => {
                         className="text-xs h-7 px-2.5 font-medium border-border/80 hover:bg-primary/10 hover:text-primary transition-colors"
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEditingSchedule(res);
+                          router.push(`/reservasi/edit/${res.id}`);
                         }}
                       >
                         <Edit className="w-3 h-3 mr-1 text-primary" />
@@ -570,9 +570,9 @@ export const JadwalPimpinanView: React.FC = () => {
                   size="sm"
                   className="text-xs h-8 px-3 font-medium"
                   onClick={() => {
-                    const agenda = selectedAgenda;
+                    const agendaId = selectedAgenda.id;
                     setSelectedAgenda(null);
-                    setEditingSchedule(agenda);
+                    router.push(`/reservasi/edit/${agendaId}`);
                   }}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
@@ -586,13 +586,6 @@ export const JadwalPimpinanView: React.FC = () => {
           </div>
         )}
       </Dialog>
-
-      {/* EDIT JADWAL DIALOG (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
-      <EditScheduleDialog
-        isOpen={!!editingSchedule}
-        onClose={() => setEditingSchedule(null)}
-        reservation={editingSchedule}
-      />
     </div>
   );
 };

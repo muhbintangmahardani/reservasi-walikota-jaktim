@@ -44,7 +44,6 @@ import {
   Edit,
 } from 'lucide-react';
 import { Reservation } from '../../../domain/entities/Reservation';
-import { EditScheduleDialog } from '../schedule/EditScheduleDialog';
 import { useReservations } from '../../context/ReservationContext';
 import { useAuth } from '../../context/AuthContext';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
@@ -110,7 +109,6 @@ export const ScheduleCalendar: React.FC = () => {
 
   // Selected reservation for Detail Modal
   const [selectedReservation, setSelectedReservation] = useState<Reservation | null>(null);
-  const [editingReservation, setEditingReservation] = useState<Reservation | null>(null);
 
   // Drag-to-create or Click-to-create states
   const [isDragging, setIsDragging] = useState(false);
@@ -1231,9 +1229,9 @@ export const ScheduleCalendar: React.FC = () => {
                   size="sm"
                   className="text-xs h-8 px-3 font-medium"
                   onClick={() => {
-                    const res = selectedReservation;
+                    const resId = selectedReservation.id;
                     setSelectedReservation(null);
-                    setEditingReservation(res);
+                    router.push(`/reservasi/edit/${resId}`);
                   }}
                 >
                   <Edit className="w-3.5 h-3.5 mr-1.5" />
@@ -1247,13 +1245,6 @@ export const ScheduleCalendar: React.FC = () => {
           </div>
         )}
       </Dialog>
-
-      {/* EDIT JADWAL DIALOG (KHUSUS PIMPINAN, ASISTEN & ADMIN) */}
-      <EditScheduleDialog
-        isOpen={!!editingReservation}
-        onClose={() => setEditingReservation(null)}
-        reservation={editingReservation}
-      />
     </div>
   );
 };
