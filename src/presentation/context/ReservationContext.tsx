@@ -13,6 +13,7 @@ import {
 } from '../../infrastructure/repositories';
 import { isSupabaseConfigured, createClient } from '../../infrastructure/supabase/client';
 import { useAuth } from './AuthContext';
+import { getWIBISOString } from '../../lib/wib-time';
 
 interface ReservationContextType {
   reservations: Reservation[];
@@ -57,8 +58,12 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const isBackendConnected = isSupabaseConfigured();
 
-  const loadData = useCallback(async () => {
-    setIsLoading(true);
+  const isInitialLoadRef = React.useRef(true);
+
+  const loadData = useCallback(async (isSilent = false) => {
+    if (!isSilent && isInitialLoadRef.current) {
+      setIsLoading(true);
+    }
     try {
       const [resList, roomList, catList, picList, notifList] = await Promise.all([
         reservationRepo.getAllReservations(),
@@ -67,8 +72,13 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
         picContactRepo.getAllPicContacts(),
         currentUser ? notificationRepo.getNotificationsByUserId(currentUser.id, currentUser.role) : Promise.resolve([]),
       ]);
-      // Settling delay so skeleton shimmer is visible during initial load
-      await new Promise((resolve) => setTimeout(resolve, 400));
+      
+      // Settling delay hanya pada render pertama kali untuk animasi skeleton yang halus
+      if (isInitialLoadRef.current) {
+        await new Promise((resolve) => setTimeout(resolve, 200));
+        isInitialLoadRef.current = false;
+      }
+      
       setReservations(resList);
       setRooms(roomList);
       setCategories(catList);
@@ -85,7 +95,7 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
     loadData();
   }, [loadData]);
 
-  // Supabase Realtime Listener (Auto update upon changes across all tabs/devices)
+  // Supabase Realtime Listener (Auto update upon changes across all tabs/devices tanpa flicker)
   useEffect(() => {
     if (!isSupabaseConfigured()) return;
 
@@ -97,21 +107,21 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
           'postgres_changes',
           { event: '*', schema: 'public', table: 'reservations' },
           () => {
-            loadData();
+            loadData(true);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'notifications' },
           () => {
-            loadData();
+            loadData(true);
           }
         )
         .on(
           'postgres_changes',
           { event: '*', schema: 'public', table: 'rooms' },
           () => {
-            loadData();
+            loadData(true);
           }
         )
         .subscribe();
@@ -131,42 +141,85 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
 
   const createReservation = async (data: Omit<Reservation, 'id' | 'createdAt' | 'updatedAt' | 'status'>) => {
     const res = await reservationRepo.createReservation(data);
+    
+    // Injeksi state seketika secara realtime untuk kalender, riwayat saya, meja verifikasi & jadwal pimpinan
+    setReservations((prev) => [res, ...prev.filter((r) => r.id !== res.id)]);
+
     if (currentUser) {
       try {
-        await notificationRepo.createNotification({
+        const notif = await notificationRepo.createNotification({
           recipientId: currentUser.id,
           reservationId: res.id,
           title: 'Pengajuan Reservasi Berhasil',
           message: `Pengajuan ruangan "${res.roomName}" untuk acara "${res.eventName}" sedang menunggu verifikasi Sekpim.`,
           type: 'info',
         });
+        if (notif) {
+          setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+        }
       } catch (e) {
         console.warn('Could not insert notification to DB:', e);
       }
     }
-    await loadData();
+    
+    // Sinkronisasi data di background tanpa skeleton shimmer
+    loadData(true);
     return res;
   };
 
   const updateReservation = async (id: string, data: Partial<Reservation>, notifyMessage?: string) => {
+    // Injeksi perubahan seketika
+    const nowWib = getWIBISOString();
+    setReservations((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, ...data, updatedAt: nowWib } : r))
+    );
+
     const updated = await reservationRepo.updateReservation(id, data);
+    setReservations((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    );
     
     // Kirim notifikasi perubahan jika diubah oleh asisten/pimpinan ke pemohon
     if (notifyMessage) {
-      await notificationRepo.createNotification({
-        recipientId: updated.userId,
-        reservationId: updated.id,
-        title: 'Perubahan Data Reservasi',
-        message: notifyMessage,
-        type: 'warning',
-      });
+      try {
+        const notif = await notificationRepo.createNotification({
+          recipientId: updated.userId,
+          reservationId: updated.id,
+          title: 'Perubahan Data Reservasi',
+          message: notifyMessage,
+          type: 'warning',
+        });
+        if (notif) {
+          setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+        }
+      } catch (e) {
+        console.warn('Could not insert notification to DB:', e);
+      }
     }
 
-    await loadData();
+    loadData(true);
     return updated;
   };
 
   const approveReservation = async (id: string, categoryId: string, categoryName: string) => {
+    const nowWib = getWIBISOString();
+    // 1. Optimistic instant UI update: seketika berpindah dari tab 'menunggu' ke 'disetujui' di meja verifikasi
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'disetujui' as const,
+              categoryId,
+              categoryName,
+              verifiedBy: currentUser?.fullName || 'Pimpinan',
+              verifiedAt: nowWib,
+              updatedAt: nowWib,
+            }
+          : r
+      )
+    );
+
     const updated = await reservationRepo.approveReservation(
       id,
       categoryId,
@@ -175,20 +228,49 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       currentUser?.fullName || 'Pimpinan'
     );
 
-    // Notifikasi internal ke user pemohon
-    await notificationRepo.createNotification({
-      recipientId: updated.userId,
-      reservationId: updated.id,
-      title: 'Reservasi Disetujui!',
-      message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" telah diverifikasi dan disetujui. Jadwal resmi telah diblock di kalender.`,
-      type: 'success',
-    });
+    // Sinkronkan dengan objek resmi kembalian database
+    setReservations((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    );
 
-    await loadData();
+    // Notifikasi internal ke user pemohon
+    try {
+      const notif = await notificationRepo.createNotification({
+        recipientId: updated.userId,
+        reservationId: updated.id,
+        title: 'Reservasi Disetujui!',
+        message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" telah diverifikasi dan disetujui. Jadwal resmi telah diblock di kalender.`,
+        type: 'success',
+      });
+      if (notif) {
+        setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+      }
+    } catch (e) {
+      console.warn('Could not insert notification to DB:', e);
+    }
+
+    loadData(true);
     return updated;
   };
 
   const rejectReservation = async (id: string, reason: string) => {
+    const nowWib = getWIBISOString();
+    // 1. Optimistic instant UI update: seketika berpindah ke tab 'ditolak'
+    setReservations((prev) =>
+      prev.map((r) =>
+        r.id === id
+          ? {
+              ...r,
+              status: 'ditolak' as const,
+              rejectionReason: reason,
+              verifiedBy: currentUser?.fullName || 'Pimpinan',
+              verifiedAt: nowWib,
+              updatedAt: nowWib,
+            }
+          : r
+      )
+    );
+
     const updated = await reservationRepo.rejectReservation(
       id,
       reason,
@@ -196,23 +278,35 @@ export const ReservationProvider: React.FC<{ children: React.ReactNode }> = ({ c
       currentUser?.fullName || 'Pimpinan'
     );
 
-    // Notifikasi internal ke user pemohon
-    await notificationRepo.createNotification({
-      recipientId: updated.userId,
-      reservationId: updated.id,
-      title: 'Reservasi Ditolak',
-      message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" ditolak. Alasan: ${reason}`,
-      type: 'error',
-    });
+    setReservations((prev) =>
+      prev.map((r) => (r.id === updated.id ? updated : r))
+    );
 
-    await loadData();
+    // Notifikasi internal ke user pemohon
+    try {
+      const notif = await notificationRepo.createNotification({
+        recipientId: updated.userId,
+        reservationId: updated.id,
+        title: 'Reservasi Ditolak',
+        message: `Pengajuan ruangan "${updated.roomName}" untuk "${updated.eventName}" ditolak. Alasan: ${reason}`,
+        type: 'error',
+      });
+      if (notif) {
+        setNotifications((prev) => [notif, ...prev.filter((n) => n.id !== notif.id)]);
+      }
+    } catch (e) {
+      console.warn('Could not insert notification to DB:', e);
+    }
+
+    loadData(true);
     return updated;
   };
 
   const deleteReservation = async (id: string) => {
+    setReservations((prev) => prev.filter((r) => r.id !== id));
     const success = await reservationRepo.deleteReservation(id);
     if (success) {
-      await loadData();
+      loadData(true);
     }
     return success;
   };

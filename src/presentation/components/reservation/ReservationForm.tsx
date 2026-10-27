@@ -123,10 +123,21 @@ export const ReservationForm: React.FC = () => {
         eventDate,
         startTime,
         endTime,
-        executorOfficial,
-        accompanyingOfficial,
-        dressCode,
-        letterOrigin,
+        executorOfficial:
+          executorOfficial?.trim() ||
+          (currentUser?.role === 'verifikator_pimpinan'
+            ? currentUser.fullName || 'Walikota Jakarta Timur'
+            : currentUser?.role === 'verifikator_asisten'
+            ? currentUser.fullName || 'Asisten Pemerintahan'
+            : 'Pimpinan Rapat'),
+        accompanyingOfficial: accompanyingOfficial || '-',
+        dressCode: dressCode || 'Batik / Bebas Rapi',
+        letterOrigin:
+          letterOrigin?.trim() ||
+          currentUser?.unitName ||
+          (currentUser?.role === 'verifikator_pimpinan'
+            ? 'Sekretariat Pimpinan (Walikota)'
+            : 'Bagian Pemerintahan'),
       });
 
       toast({

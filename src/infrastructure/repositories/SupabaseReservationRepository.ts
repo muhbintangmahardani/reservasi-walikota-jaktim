@@ -293,14 +293,15 @@ export class SupabaseReservationRepository implements IReservationRepository {
       }
     }
 
+    const nowWib = getWIBISOString();
     const { data: updated, error } = await this.supabase
       .from('reservations')
       .update({
         status: 'disetujui',
         category_id: categoryId.startsWith('cat-') || categoryId === 'custom' ? null : categoryId,
         verified_by: verifierId.startsWith('user-') ? null : verifierId,
-        verified_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        verified_at: nowWib,
+        updated_at: nowWib,
       })
       .eq('id', id)
       .select(`
@@ -321,14 +322,15 @@ export class SupabaseReservationRepository implements IReservationRepository {
     verifierId: string,
     verifierName: string
   ): Promise<Reservation> {
+    const nowWib = getWIBISOString();
     const { data: updated, error } = await this.supabase
       .from('reservations')
       .update({
         status: 'ditolak',
         rejection_reason: reason,
         verified_by: verifierId.startsWith('user-') ? null : verifierId,
-        verified_at: new Date().toISOString(),
-        updated_at: new Date().toISOString(),
+        verified_at: nowWib,
+        updated_at: nowWib,
       })
       .eq('id', id)
       .select(`

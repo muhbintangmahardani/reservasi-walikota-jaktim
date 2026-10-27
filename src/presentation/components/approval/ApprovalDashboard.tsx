@@ -43,6 +43,7 @@ export const ApprovalDashboard: React.FC = () => {
 
   const [rejectingItem, setRejectingItem] = useState<Reservation | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const [editingItem, setEditingItem] = useState<Reservation | null>(null);
   const [editExecutor, setEditExecutor] = useState('');
@@ -63,17 +64,30 @@ export const ApprovalDashboard: React.FC = () => {
   };
 
   const handleConfirmApprove = async () => {
-    if (!approvingItem) return;
+    if (!approvingItem || isProcessing) return;
     const cat = categories.find((c) => c.id === selectedCategoryId);
     const catName = selectedCategoryId === 'custom' ? customCategoryName : cat?.name || 'Kegiatan Kedinasan';
-
-    await approveReservation(approvingItem.id, selectedCategoryId, catName);
-    toast({
-      title: 'Reservasi Disetujui!',
-      description: `Agenda "${approvingItem.eventName}" disetujui dengan kategori ${catName}. Jadwal resmi telah diblock di kalender.`,
-      variant: 'success',
-    });
+    const item = approvingItem;
+    setIsProcessing(true);
     setApprovingItem(null);
+
+    try {
+      await approveReservation(item.id, selectedCategoryId, catName);
+      toast({
+        title: 'Reservasi Disetujui!',
+        description: `Agenda "${item.eventName}" disetujui dengan kategori ${catName}. Jadwal resmi telah diblock di kalender.`,
+        variant: 'success',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal menyetujui reservasi.';
+      toast({
+        title: 'Gagal Menyetujui',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleOpenRejectModal = (res: Reservation) => {
@@ -82,14 +96,29 @@ export const ApprovalDashboard: React.FC = () => {
   };
 
   const handleConfirmReject = async () => {
-    if (!rejectingItem || !rejectionReason.trim()) return;
-    await rejectReservation(rejectingItem.id, rejectionReason.trim());
-    toast({
-      title: 'Reservasi Ditolak',
-      description: `Pengajuan ruangan "${rejectingItem.eventName}" telah ditolak. Alasan: ${rejectionReason.trim()}`,
-      variant: 'destructive',
-    });
+    if (!rejectingItem || !rejectionReason.trim() || isProcessing) return;
+    const item = rejectingItem;
+    const reason = rejectionReason.trim();
+    setIsProcessing(true);
     setRejectingItem(null);
+
+    try {
+      await rejectReservation(item.id, reason);
+      toast({
+        title: 'Reservasi Ditolak',
+        description: `Pengajuan ruangan "${item.eventName}" telah ditolak. Alasan: ${reason}`,
+        variant: 'destructive',
+      });
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : 'Gagal menolak reservasi.';
+      toast({
+        title: 'Gagal Menolak',
+        description: msg,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleOpenEditModal = (res: Reservation) => {

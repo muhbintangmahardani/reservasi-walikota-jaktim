@@ -16,6 +16,7 @@ import {
   Info,
 } from 'lucide-react';
 import { useReservations } from '../../context/ReservationContext';
+import { useAuth } from '../../context/AuthContext';
 import { Reservation } from '../../../domain/entities/Reservation';
 import { Card, CardContent } from '../ui/card';
 import { Badge } from '../ui/badge';
@@ -35,8 +36,8 @@ interface LeaderRoleConfig {
 
 const LEADERSHIP_ROLES: LeaderRoleConfig[] = [
   { id: 'all', label: 'Semua Pimpinan', keywords: [] },
-  { id: 'walikota', label: 'Walikota', keywords: ['walikota', 'anwar', 'wali kota'] },
-  { id: 'wakil', label: 'Wakil Walikota', keywords: ['wakil walikota', 'wawali', 'wakil wali kota'] },
+  { id: 'walikota', label: 'Walikota', keywords: ['walikota', 'anwar', 'wali kota', 'wali'] },
+  { id: 'wakil', label: 'Wakil Walikota', keywords: ['wakil walikota', 'wawali', 'wakil wali kota', 'wakil'] },
   { id: 'sekko', label: 'Sekko', keywords: ['sekko', 'sekretaris kota', 'sekda', 'sekretaris'] },
   { id: 'aspem', label: 'Aspem', keywords: ['aspem', 'asisten pemerintahan', 'asisten 1', 'fauzi'] },
   { id: 'asekbang', label: 'Asekbang', keywords: ['asekbang', 'perekonomian', 'pembangunan', 'asisten 2'] },
@@ -45,6 +46,7 @@ const LEADERSHIP_ROLES: LeaderRoleConfig[] = [
 
 export const JadwalPimpinanView: React.FC = () => {
   const { reservations, picContacts, isLoading } = useReservations();
+  const { allUsers } = useAuth();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedLeader, setSelectedLeader] = useState('all');
@@ -60,11 +62,27 @@ export const JadwalPimpinanView: React.FC = () => {
       const origin = (res.letterOrigin || '').toLowerCase();
       const category = (res.categoryName || '').toLowerCase();
       const event = (res.eventName || '').toLowerCase();
+      const room = (res.roomName || '').toLowerCase();
+      const userName = (res.userName || '').toLowerCase();
+      const userEmail = (res.userEmail || '').toLowerCase();
 
-      // Check leadership keywords
+      // Check if creator is a leader profile
+      const creator = allUsers.find(
+        (u) => u.id === res.userId || (res.userEmail && u.email?.toLowerCase() === res.userEmail.toLowerCase())
+      );
+      const isCreatorLeadership =
+        creator?.role === 'verifikator_pimpinan' ||
+        creator?.role === 'verifikator_asisten' ||
+        userEmail.includes('walikota') ||
+        userEmail.includes('aspem') ||
+        userEmail.includes('sekko');
+
+      // Comprehensive leadership detection across all possible attributes
       const isLeadership =
+        isCreatorLeadership ||
         executor.includes('walikota') ||
         executor.includes('wali kota') ||
+        executor.includes('wakil') ||
         executor.includes('sekko') ||
         executor.includes('sekretaris') ||
         executor.includes('asisten') ||
@@ -73,19 +91,44 @@ export const JadwalPimpinanView: React.FC = () => {
         executor.includes('askesra') ||
         executor.includes('fauzi') ||
         executor.includes('anwar') ||
+        executor.includes('pimpinan') ||
         accompanying.includes('walikota') ||
         accompanying.includes('sekko') ||
         accompanying.includes('asisten') ||
+        accompanying.includes('pimpinan') ||
         origin.includes('sekpim') ||
         origin.includes('pimpinan') ||
+        origin.includes('walikota') ||
+        origin.includes('asisten') ||
+        origin.includes('sekretariat') ||
         category.includes('pimpinan') ||
+        category.includes('rakor') ||
+        category.includes('protokoler') ||
         event.includes('walikota') ||
+        event.includes('wali kota') ||
+        event.includes('sekko') ||
+        event.includes('pimpinan') ||
         event.includes('rapim') ||
-        event.includes('audiensi');
+        event.includes('audiensi') ||
+        room.includes('walikota') ||
+        room.includes('wali kota') ||
+        room.includes('wakil') ||
+        room.includes('sekko') ||
+        room.includes('sekretaris') ||
+        room.includes('asisten') ||
+        room.includes('aspem') ||
+        userName.includes('anwar') ||
+        userName.includes('walikota') ||
+        userName.includes('fauzi') ||
+        userName.includes('aspem') ||
+        userName.includes('sekko') ||
+        userEmail.includes('walikota') ||
+        userEmail.includes('aspem') ||
+        userEmail.includes('sekko');
 
       return isLeadership;
     });
-  }, [reservations]);
+  }, [reservations, allUsers]);
 
   // Sub-filter by chosen leader, time, status, and search
   const filteredAgendas = useMemo(() => {
@@ -99,9 +142,25 @@ export const JadwalPimpinanView: React.FC = () => {
       if (selectedLeader !== 'all') {
         const config = LEADERSHIP_ROLES.find((l) => l.id === selectedLeader);
         if (config && config.keywords.length > 0) {
-          const combinedText = `${res.executorOfficial || ''} ${res.accompanyingOfficial || ''} ${res.eventName || ''} ${res.letterOrigin || ''}`.toLowerCase();
+          const creator = allUsers.find(
+            (u) => u.id === res.userId || (res.userEmail && u.email?.toLowerCase() === res.userEmail.toLowerCase())
+          );
+          const creatorRole = creator?.role;
+          const isDirectLeaderRoleMatch =
+            (selectedLeader === 'walikota' &&
+              (creatorRole === 'verifikator_pimpinan' ||
+                res.userEmail?.toLowerCase().includes('walikota') ||
+                res.userName?.toLowerCase().includes('anwar') ||
+                res.roomName?.toLowerCase().includes('walikota'))) ||
+            (selectedLeader === 'aspem' &&
+              (creatorRole === 'verifikator_asisten' ||
+                res.userEmail?.toLowerCase().includes('aspem') ||
+                res.userName?.toLowerCase().includes('fauzi') ||
+                res.roomName?.toLowerCase().includes('aspem')));
+
+          const combinedText = `${res.executorOfficial || ''} ${res.accompanyingOfficial || ''} ${res.eventName || ''} ${res.letterOrigin || ''} ${res.roomName || ''} ${res.userName || ''} ${res.userEmail || ''} ${res.categoryName || ''}`.toLowerCase();
           const matches = config.keywords.some((kw) => combinedText.includes(kw));
-          if (!matches) return false;
+          if (!matches && !isDirectLeaderRoleMatch) return false;
         }
       }
 
@@ -124,7 +183,8 @@ export const JadwalPimpinanView: React.FC = () => {
           res.eventName.toLowerCase().includes(q) ||
           res.roomName.toLowerCase().includes(q) ||
           (res.executorOfficial && res.executorOfficial.toLowerCase().includes(q)) ||
-          (res.letterOrigin && res.letterOrigin.toLowerCase().includes(q));
+          (res.letterOrigin && res.letterOrigin.toLowerCase().includes(q)) ||
+          (res.userName && res.userName.toLowerCase().includes(q));
         if (!matches) return false;
       }
 
@@ -133,7 +193,7 @@ export const JadwalPimpinanView: React.FC = () => {
       if (a.eventDate !== b.eventDate) return a.eventDate.localeCompare(b.eventDate);
       return a.startTime.localeCompare(b.startTime);
     });
-  }, [leadershipAgendas, selectedLeader, timeFilter, statusFilter, searchQuery]);
+  }, [leadershipAgendas, selectedLeader, timeFilter, statusFilter, searchQuery, allUsers]);
 
   // Metrics summary
   const todayCount = useMemo(() => {

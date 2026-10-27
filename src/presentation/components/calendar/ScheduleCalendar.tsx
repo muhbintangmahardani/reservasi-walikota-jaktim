@@ -287,7 +287,18 @@ export const ScheduleCalendar: React.FC = () => {
       startTime: formattedStart,
       endTime: formattedEnd,
       roomId: prev.roomId || (activeRooms[0]?.id ?? ''),
-      department: currentUser?.unitName || 'Bagian Tata Pemerintahan',
+      department:
+        currentUser?.unitName ||
+        (currentUser?.role === 'verifikator_pimpinan'
+          ? 'Sekretariat Pimpinan (Walikota)'
+          : 'Bagian Tata Pemerintahan'),
+      executorOfficial:
+        prev.executorOfficial ||
+        (currentUser?.role === 'verifikator_pimpinan'
+          ? currentUser.fullName || 'Walikota'
+          : currentUser?.role === 'verifikator_asisten'
+          ? currentUser.fullName || 'Asisten Pemerintahan'
+          : ''),
     }));
 
     setIsDragging(false);
@@ -342,10 +353,21 @@ export const ScheduleCalendar: React.FC = () => {
         eventDate: quickForm.date,
         startTime: quickForm.startTime,
         endTime: quickForm.endTime,
-        executorOfficial: quickForm.executorOfficial || 'Pimpinan Rapat',
+        executorOfficial:
+          quickForm.executorOfficial?.trim() ||
+          (currentUser?.role === 'verifikator_pimpinan'
+            ? currentUser.fullName || 'Walikota Jakarta Timur'
+            : currentUser?.role === 'verifikator_asisten'
+            ? currentUser.fullName || 'Asisten Pemerintahan'
+            : 'Pimpinan Rapat'),
         accompanyingOfficial: '-',
         dressCode: quickForm.dressCode,
-        letterOrigin: quickForm.department || currentUser?.unitName || 'Bagian Pemerintahan',
+        letterOrigin:
+          quickForm.department?.trim() ||
+          currentUser?.unitName ||
+          (currentUser?.role === 'verifikator_pimpinan'
+            ? 'Sekretariat Pimpinan (Walikota)'
+            : 'Bagian Pemerintahan'),
       });
 
       toast({
@@ -846,11 +868,11 @@ export const ScheduleCalendar: React.FC = () => {
               {/* GRID BODY: TIME SLOTS & RESERVATION BLOCKS */}
               <div className="flex flex-1 relative min-h-[840px]">
                 {/* Time Axis Column */}
-                <div className="w-16 shrink-0 divide-y divide-border border-r border-border bg-card/40 text-right pr-2 select-none">
+                <div className="w-16 shrink-0 divide-y divide-border border-r border-border bg-card/40 text-right pr-2.5 select-none">
                   {HOUR_SLOTS.map((hour) => (
                     <div
                       key={hour}
-                      className="h-[60px] text-[11px] font-medium text-muted-foreground pt-0.5 relative -top-2.5"
+                      className="h-[60px] text-[11px] font-medium text-muted-foreground pt-1.5 flex items-start justify-end"
                     >
                       {String(hour).padStart(2, '0')}:00
                     </div>
