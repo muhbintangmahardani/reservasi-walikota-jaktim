@@ -154,8 +154,8 @@ npm install
 ### 3. Konfigurasi Environment (`.env.local`)
 Buat file bernama `.env.local` di root folder proyek, lalu isi dengan konfigurasi Supabase berikut:
 ```env
-NEXT_PUBLIC_SUPABASE_URL=https://tqmqnyhkjwhhptuewbei.supabase.co
-NEXT_PUBLIC_SUPABASE_ANON_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InRxbXFueWhrandoaHB0dWV3YmVpIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTMwMjQxMTUsImV4cCI6MjEwODYwMDExNX0.yJLdI3WPw-agb8m4nf60hKBSay_thNiyC6BWbr3fR74
+NEXT_PUBLIC_SUPABASE_URL=https://NEXT_PUBLIC_SUPABASE_URL.supabase.co
+NEXT_PUBLIC_SUPABASE_ANON_KEY=NEXT_PUBLIC_SUPABASE_ANON_KEY
 ```
 
 > **💡 Graceful Fallback:** Jika koneksi Supabase offline atau belum diisi, Repository Factory secara otomatis beralih ke **Persistent LocalStorage Mock**, sehingga seluruh fitur tetap berjalan normal tanpa kendala.
